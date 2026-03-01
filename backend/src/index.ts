@@ -10,6 +10,8 @@ import mediaRoutes from './routes/media.routes.js'
 import streamRoutes from './routes/stream.routes.js'
 import roomsRoutes from './routes/rooms.routes.js'
 import friendsRoutes from './routes/friends.routes.js'
+import notificationsRoutes from './routes/notifications.routes.js'
+import watchHistoryRoutes from './routes/watch-history.routes.js'
 import { roomsController } from './routes/rooms.routes.js'
 import type { AppVariables, WSEvent } from './types/index.js'
 import { verifyToken } from './lib/jwt.js'
@@ -41,11 +43,15 @@ app.use('/api/media/*', authMiddleware)
 app.use('/api/stream/*', authMiddleware)
 app.use('/api/rooms/*', authMiddleware)
 app.use('/api/friends/*', authMiddleware)
+app.use('/api/notifications/*', authMiddleware)
+app.use('/api/history/*', authMiddleware)
 
 app.route('/api/media', mediaRoutes)
 app.route('/api/stream', streamRoutes)
 app.route('/api/rooms', roomsRoutes)
 app.route('/api/friends', friendsRoutes)
+app.route('/api/notifications', notificationsRoutes)
+app.route('/api/history', watchHistoryRoutes)
 
 // WebSocket endpoint for rooms
 app.get(

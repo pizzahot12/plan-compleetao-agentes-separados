@@ -28,3 +28,9 @@ export const mediaListQuerySchema = z.object({
   skip: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20),
 })
+
+export const watchProgressSchema = z.object({
+  mediaId: z.string().min(1, 'mediaId requerido'),
+  currentTime: z.number().min(0, 'currentTime debe ser >= 0'),
+  duration: z.number().min(0, 'duration debe ser >= 0'),
+})

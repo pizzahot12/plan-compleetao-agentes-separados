@@ -118,6 +118,24 @@ export interface Friend {
   watching?: string
 }
 
+// --- NOTIFICATIONS ---
+export interface Notification {
+  id: string
+  type: 'room_invite' | 'friend_request' | 'friend_joined' | 'user_joined'
+  data: Record<string, unknown> | null
+  read: boolean
+  created_at: string
+}
+
+// --- WATCH HISTORY ---
+export interface WatchHistoryEntry {
+  mediaId: string
+  currentTime: number
+  duration: number
+  completed: boolean
+  lastWatchedAt: string
+}
+
 // --- WEBSOCKET ---
 export type WSEventType =
   | 'user_joined'
