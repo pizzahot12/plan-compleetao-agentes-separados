@@ -181,18 +181,19 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </Card>
 
-                  {/* Friend code */}
+                  {/* User ID for adding friends */}
                   <Card className="p-6">
-                    <h3 className="text-white font-medium text-lg mb-4">Tu código de amigo</h3>
+                    <h3 className="text-white font-medium text-lg mb-2">Tu ID de usuario</h3>
+                    <p className="text-white/50 text-sm mb-4">Comparte este ID para que tus amigos puedan agregarte</p>
                     <div className="flex items-center gap-4">
-                      <code className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-2xl font-mono font-bold text-white tracking-wider text-center">
-                        {user?.friendCode || 'ABC123'}
+                      <code className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-white tracking-wide text-center break-all">
+                        {user?.id || 'Cargando...'}
                       </code>
                       <Button
                         variant="secondary"
                         onClick={() => {
-                          navigator.clipboard.writeText(user?.friendCode || 'ABC123');
-                          showSuccess('Código copiado', 'Comparte con tus amigos');
+                          navigator.clipboard.writeText(user?.id || '');
+                          showSuccess('ID copiado', 'Comparte con tus amigos');
                         }}
                       >
                         Copiar
