@@ -39,11 +39,10 @@ app.get('/health', (c) => {
 app.route('/api/auth', authRoutes)
 
 // Protected routes (require JWT)
-// Temporarily disabled for testing:
-// app.use('/api/media/*', authMiddleware)
-// app.use('/api/stream/*', authMiddleware)
-// app.use('/api/rooms/*', authMiddleware)
-// app.use('/api/friends/*', authMiddleware)
+app.use('/api/media/*', authMiddleware)
+app.use('/api/stream/*', authMiddleware)
+app.use('/api/rooms/*', authMiddleware)
+app.use('/api/friends/*', authMiddleware)
 app.use('/api/notifications/*', authMiddleware)
 app.use('/api/history/*', authMiddleware)
 

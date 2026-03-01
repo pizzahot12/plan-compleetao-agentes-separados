@@ -4,12 +4,18 @@ import type { AppVariables } from '../types/index.js'
 
 const authMiddleware = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   const authHeader = c.req.header('Authorization')
+  const queryToken = c.req.query('token')
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Token no proporcionado' }, 401)
+  let token = ''
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1]
+  } else if (queryToken) {
+    token = queryToken
   }
 
-  const token = authHeader.split(' ')[1]
+  if (!token) {
+    return c.json({ error: 'Token no proporcionado' }, 401)
+  }
 
   try {
     const payload = verifyToken(token)

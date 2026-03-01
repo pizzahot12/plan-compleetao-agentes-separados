@@ -6,11 +6,14 @@ import { ChatPanel } from '@/components/Watch/ChatPanel';
 import { RoomInfo } from '@/components/Watch/RoomInfo';
 import { AdminPanel } from '@/components/Watch/AdminPanel';
 import { useRooms } from '@/hooks/useRooms';
+import { useRoomStore } from '@/stores/roomStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useMedia } from '@/hooks/useMedia';
 import { Loading } from '@/components/Common/Loading';
 import { Button } from '@/components/Common/Button';
 import { ArrowLeft, MessageSquare, Users, Crown, X, ChevronUp, ChevronDown } from 'lucide-react';
+
+import { apiService } from '@/lib/api-service';
 
 const WatchPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -25,6 +28,20 @@ const WatchPage: React.FC = () => {
   const [showAdmin, setShowAdmin] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'none' | 'chat' | 'participants' | 'admin'>('none');
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+
+  // Sync progress every 10 seconds
+  useEffect(() => {
+    if (!room?.mediaId) return;
+
+    const interval = setInterval(() => {
+      const { currentTime, duration } = useRoomStore.getState().videoState;
+      if (currentTime > 0 && duration > 0) {
+        apiService.updateWatchProgress(room.mediaId, currentTime, duration).catch(() => {});
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [room?.mediaId]);
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -176,6 +193,7 @@ const WatchPage: React.FC = () => {
           mobilePanel !== 'none' && 'lg:flex-1'
         )}>
           <VideoPlayer
+            src={room?.mediaId ? apiService.getStreamUrl(room.mediaId) : undefined}
             poster={media?.backdrop || media?.poster}
             className="h-full w-full"
             onToggleChat={() => setShowChat(!showChat)}

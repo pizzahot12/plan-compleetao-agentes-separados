@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { NotificationContainer } from '@/components/Layout/Notification';
 
@@ -194,34 +193,13 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-// Auth initializer - restores session from Supabase on app load
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const initSession = useAuthStore((s) => s.initSession);
-  const setUser = useAuthStore((s) => s.setUser);
-  const setToken = useAuthStore((s) => s.setToken);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Restore session on mount
     initSession().finally(() => setReady(true));
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          setUser(null);
-          setToken(null);
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Re-init to get fresh profile data
-          await initSession();
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [initSession, setUser, setToken]);
+  }, [initSession]);
 
   if (!ready) {
     return <PageLoader />;

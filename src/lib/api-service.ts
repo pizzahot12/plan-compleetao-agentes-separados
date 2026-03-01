@@ -269,7 +269,8 @@ export class ApiService {
 
   // Stream endpoint
   getStreamUrl(mediaId: string, quality: string = '720p'): string {
-    return `${this.baseUrl}/stream/${mediaId}?quality=${quality}`;
+    const token = this.getToken();
+    return `${this.baseUrl}/stream/${mediaId}?quality=${quality}&token=${token || ''}`;
   }
 }
 

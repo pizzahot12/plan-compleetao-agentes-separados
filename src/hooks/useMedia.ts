@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMediaStore } from '@/stores/mediaStore';
 import { apiService } from '@/lib/api-service';
+import { useAuthStore } from '@/stores/authStore';
 
 export const useMedia = () => {
   const {
@@ -104,13 +105,18 @@ export const useMedia = () => {
     }
   }, [setLoading, setError, setSelectedMedia]);
 
-  // Initial load
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
+    if (!isAuthenticated) return;
+    if (hasFetchedRef.current && movies.length > 0) return;
+    hasFetchedRef.current = true;
     loadMovies();
     loadSeries();
     loadTrending();
     loadContinueWatching();
-  }, []);
+  }, [isAuthenticated]);
 
   const allMedia = useMemo(() => [...movies, ...series], [movies, series]);
 

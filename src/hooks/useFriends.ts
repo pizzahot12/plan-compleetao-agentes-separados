@@ -53,11 +53,13 @@ export const useFriends = () => {
     }
   }, []);
 
-  // Initial load
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadFriends();
     loadRequests();
-  }, [loadFriends, loadRequests]);
+  }, [isAuthenticated, loadFriends, loadRequests]);
 
   const onlineFriends = friends.filter((f) => f.isOnline);
   const offlineFriends = friends.filter((f) => !f.isOnline);
