@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
+import type { MediaType } from '@/types';
 
 class ApiError extends Error {
   status: number;
@@ -96,11 +97,11 @@ export class ApiService {
     
     return data.map(item => ({
       ...item,
-      type: type === 'series' ? 'series' as const : 'movie' as const,
+      type: (type === 'series' ? 'series' : 'movie') as MediaType,
     }));
   }
 
-  async getMediaDetails(id: string, mediaType: 'movie' | 'series' = 'movie') {
+  async getMediaDetails(id: string, mediaType: MediaType = 'movie') {
     const data = await this.request<{
       id: string;
       title: string;
