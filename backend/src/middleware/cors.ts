@@ -6,7 +6,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
 
 const isAllowedOrigin = (origin: string): boolean => {
   if (allowedOrigins.includes(origin)) return true
-  if (origin.includes('vercel.app') || origin.includes('localhost')) return true
+  if (origin.includes('vercel.app') || origin.includes('localhost') || origin.includes('watchtogether.nl')) return true
   return false
 }
 
