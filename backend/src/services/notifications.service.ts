@@ -1,4 +1,3 @@
-import supabase from '../lib/database.js'
 import { supabaseAdmin } from '../lib/database.js'
 import type { NotificationRow, NotificationInsert } from '../types/database.js'
 import logger from '../utils/logger.js'
@@ -16,7 +15,7 @@ export async function getNotifications(
   unreadOnly: boolean = false,
   limit: number = 50
 ): Promise<NotificationResponse[]> {
-  let query = supabase
+  let query = supabaseAdmin
     .from('notifications')
     .select('id, type, data, read, created_at')
     .eq('user_id', userId)
@@ -44,7 +43,7 @@ export async function getNotifications(
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
@@ -59,7 +58,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
 }
 
 export async function markAsRead(userId: string, notificationId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('notifications')
     .update({ read: true })
     .eq('id', notificationId)
@@ -72,7 +71,7 @@ export async function markAsRead(userId: string, notificationId: string): Promis
 }
 
 export async function markAllAsRead(userId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('notifications')
     .update({ read: true })
     .eq('user_id', userId)

@@ -1,4 +1,4 @@
-import supabase from '../lib/database.js'
+import { supabaseAdmin } from '../lib/database.js'
 import type { WatchHistoryRow } from '../types/database.js'
 import logger from '../utils/logger.js'
 
@@ -15,7 +15,7 @@ export async function getHistory(
   limit: number = 20,
   offset: number = 0
 ): Promise<WatchHistoryEntry[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('watch_history')
     .select('media_id, current_time, duration, completed, last_watched_at')
     .eq('user_id', userId)
@@ -40,7 +40,7 @@ export async function getContinueWatching(
   userId: string,
   limit: number = 10
 ): Promise<WatchHistoryEntry[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('watch_history')
     .select('media_id, current_time, duration, completed, last_watched_at')
     .eq('user_id', userId)
@@ -72,7 +72,7 @@ export async function updateProgress(
   // Mark as completed if within last 5% of duration
   const completed = duration > 0 && currentTime >= duration * 0.95
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('watch_history')
     .upsert(
       {
@@ -96,7 +96,7 @@ export async function getProgress(
   userId: string,
   mediaId: string
 ): Promise<WatchHistoryEntry | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('watch_history')
     .select('media_id, current_time, duration, completed, last_watched_at')
     .eq('user_id', userId)
@@ -115,7 +115,7 @@ export async function getProgress(
 }
 
 export async function markCompleted(userId: string, mediaId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('watch_history')
     .update({ completed: true, last_watched_at: new Date().toISOString() })
     .eq('user_id', userId)
@@ -128,7 +128,7 @@ export async function markCompleted(userId: string, mediaId: string): Promise<vo
 }
 
 export async function deleteHistoryEntry(userId: string, mediaId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('watch_history')
     .delete()
     .eq('user_id', userId)

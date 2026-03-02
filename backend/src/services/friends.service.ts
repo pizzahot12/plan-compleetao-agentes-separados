@@ -1,11 +1,10 @@
-import supabase from '../lib/database.js'
 import { supabaseAdmin } from '../lib/database.js'
 import type { Friend } from '../types/index.js'
 import type { FriendRow } from '../types/database.js'
 import logger from '../utils/logger.js'
 
 export async function getFriends(userId: string): Promise<Friend[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('friends')
     .select(`
       friend_id,
@@ -32,7 +31,7 @@ export async function getFriends(userId: string): Promise<Friend[]> {
 }
 
 export async function getPendingRequests(userId: string): Promise<Friend[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('friends')
     .select(`
       user_id,
@@ -180,7 +179,7 @@ export async function acceptFriendRequest(userId: string, fromUserId: string): P
 
 export async function removeFriend(userId: string, friendId: string): Promise<void> {
   // Remove bidirectional friendship
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('friends')
     .delete()
     .or(
@@ -197,7 +196,7 @@ export async function removeFriend(userId: string, friendId: string): Promise<vo
 
 export async function blockUser(userId: string, targetId: string): Promise<void> {
   // Remove any existing friendship
-  await supabase
+  await supabaseAdmin
     .from('friends')
     .delete()
     .or(
@@ -205,7 +204,7 @@ export async function blockUser(userId: string, targetId: string): Promise<void>
     )
 
   // Insert block record
-  await supabase.from('friends').insert({
+  await supabaseAdmin.from('friends').insert({
     user_id: userId,
     friend_id: targetId,
     status: 'blocked',

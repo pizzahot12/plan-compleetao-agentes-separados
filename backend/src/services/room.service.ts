@@ -1,4 +1,4 @@
-import supabase, { supabaseAdmin } from '../lib/database.js'
+import { supabaseAdmin } from '../lib/database.js'
 import type { RoomDetails, RoomMessage, RoomSync, WSEvent } from '../types/index.js'
 import logger from '../utils/logger.js'
 
@@ -56,7 +56,7 @@ export async function createRoom(
 }
 
 export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
-  const { data: room, error } = await supabase
+  const { data: room, error } = await supabaseAdmin
     .from('rooms')
     .select(`
       id,
@@ -74,7 +74,7 @@ export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
   if (error || !room) return null
 
   // Get participants from room_participants table
-  const { data: participants } = await supabase
+  const { data: participants } = await supabaseAdmin
     .from('room_participants')
     .select('user_id, profiles (id, name, avatar)')
     .eq('room_id', room.id)
@@ -163,13 +163,13 @@ export async function addMessage(
   userId: string,
   text: string
 ): Promise<RoomMessage> {
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('name')
     .eq('id', userId)
     .single()
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('room_messages')
     .insert({
       room_id: roomId,
@@ -199,7 +199,7 @@ export async function addMessage(
 
 export async function deleteRoom(roomId: string, userId: string): Promise<void> {
   // Verify host
-  const { data: room } = await supabase
+  const { data: room } = await supabaseAdmin
     .from('rooms')
     .select('host_id')
     .eq('id', roomId)
@@ -222,7 +222,7 @@ export async function deleteRoom(roomId: string, userId: string): Promise<void> 
 
 export async function kickUser(roomId: string, hostId: string, targetUserId: string): Promise<void> {
   // Verify host
-  const { data: room } = await supabase
+  const { data: room } = await supabaseAdmin
     .from('rooms')
     .select('host_id')
     .eq('id', roomId)

@@ -1,10 +1,10 @@
-import supabase from '../lib/database.js'
+import { supabaseAdmin } from '../lib/database.js'
 import { signToken } from '../lib/jwt.js'
 import type { AuthResponse } from '../types/index.js'
 import logger from '../utils/logger.js'
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseAdmin.auth.signInWithPassword({
     email,
     password,
   })
@@ -15,7 +15,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   }
 
   // Get user profile from our profiles table
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('*')
     .eq('id', data.user.id)
@@ -40,7 +40,7 @@ export async function register(
   name: string
 ): Promise<AuthResponse> {
   // Create auth user in Supabase
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseAdmin.auth.signUp({
     email,
     password,
   })
@@ -51,7 +51,7 @@ export async function register(
   }
 
   // Create profile
-  await supabase.from('profiles').insert({
+  await supabaseAdmin.from('profiles').insert({
     id: data.user.id,
     name,
     email,
