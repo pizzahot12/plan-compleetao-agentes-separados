@@ -245,9 +245,16 @@ export function getStreamUrl(
     subtitleStreamIndex?: number
   } = {}
 ): string {
+  // Use DASH manifest - Jellyfin will transcode on-the-fly
   const params = new URLSearchParams({
-    Static: 'true',
     api_key: JELLYFIN_API_KEY,
+    audioCodec: 'aac',
+    videoCodec: 'h264',
+    audioBitrate: '192000',
+    protocol: 'hls',
+    mediaSourceId: mediaId,
+    liveStreamId: '',
+    enableAdaptiveBitrateStreaming: 'true',
   })
 
   if (options.audioStreamIndex !== undefined) {
@@ -257,7 +264,8 @@ export function getStreamUrl(
     params.set('SubtitleStreamIndex', String(options.subtitleStreamIndex))
   }
 
-  return `${JELLYFIN_URL}/Videos/${mediaId}/stream?${params}`
+  // Use HLS/DASH which handles transcoding automatically
+  return `${JELLYFIN_URL}/Videos/${mediaId}/master.m3u8?${params}`
 }
 
 export function getImageUrl(

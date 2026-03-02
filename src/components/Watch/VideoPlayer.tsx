@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useRooms } from '@/hooks/useRooms';
 import { useAuth } from '@/hooks/useAuth';
+import Hls from 'hls.js';
 import {
   Play,
   Pause,
@@ -77,6 +78,35 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoRef.current.volume = volume;
     }
   }, [volume]);
+
+  // Handle HLS streams
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    if (src.includes('.m3u8') && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('HLS manifest loaded');
+      });
+      
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        console.error('HLS error:', data);
+      });
+
+      return () => {
+        hls.destroy();
+      };
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = src;
+    }
+  }, [src]);
 
   // Handle video events
   const handleTimeUpdate = useCallback(() => {
