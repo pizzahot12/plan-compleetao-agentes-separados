@@ -16,23 +16,14 @@ export async function getMediaList(c: Context) {
   }
 
   try {
-    const cached = await cacheService.getCachedMediaList(
-      query.data.type,
-      query.data.skip,
-      query.data.limit
-    )
-
-    if (cached) {
-      logger.debug('Serving media list from cache')
-      return c.json(cached)
-    }
-
+    // Always fetch fresh data from Jellyfin (bypass cache for now)
     const media = await jellyfinService.getMediaList(
       query.data.type,
       query.data.skip,
       query.data.limit
     )
 
+    // Cache in background
     const type = query.data.type === 'series' ? 'series' : 'movie'
     cacheService.cacheMediaBatch(media, type as 'movie' | 'series').catch(() => {})
 
