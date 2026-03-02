@@ -38,14 +38,23 @@ async function jellyfinFetch<T>(path: string): Promise<T> {
   const url = `${JELLYFIN_URL}${path}`
   const separator = path.includes('?') ? '&' : '?'
 
-  const response = await fetch(`${url}${separator}api_key=${JELLYFIN_API_KEY}`)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
 
-  if (!response.ok) {
-    logger.error(`Jellyfin API error: ${response.status} ${response.statusText} for ${path}`)
-    throw new Error(`Jellyfin API error: ${response.status}`)
+  try {
+    const response = await fetch(`${url}${separator}api_key=${JELLYFIN_API_KEY}`, {
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      logger.error(`Jellyfin API error: ${response.status} ${response.statusText} for ${path}`)
+      throw new Error(`Jellyfin API error: ${response.status}`)
+    }
+
+    return response.json() as Promise<T>
+  } finally {
+    clearTimeout(timeout)
   }
-
-  return response.json() as Promise<T>
 }
 
 function ticksToSeconds(ticks: number): number {
