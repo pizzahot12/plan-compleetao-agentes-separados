@@ -65,7 +65,7 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
   }
 
   // Check if user exists
-  const { data: friendProfile } = await supabase
+  const { data: friendProfile } = await supabaseAdmin
     .from('profiles')
     .select('id')
     .eq('id', friendId)
@@ -76,7 +76,7 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
   }
 
   // Check if already friends or pending
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin
     .from('friends')
     .select('id, status')
     .eq('user_id', userId)
@@ -96,7 +96,7 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
   }
 
   // Check if the other user already sent us a request
-  const { data: reverseRequest } = await supabase
+  const { data: reverseRequest } = await supabaseAdmin
     .from('friends')
     .select('id, status')
     .eq('user_id', friendId)
@@ -105,12 +105,12 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
 
   if (reverseRequest && reverseRequest.status === 'pending') {
     // Auto-accept: both users want to be friends
-    await supabase
+    await supabaseAdmin
       .from('friends')
       .update({ status: 'accepted' })
       .eq('id', reverseRequest.id)
 
-    await supabase.from('friends').insert({
+    await supabaseAdmin.from('friends').insert({
       user_id: userId,
       friend_id: friendId,
       status: 'accepted',
@@ -121,7 +121,7 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
   }
 
   // Send pending request
-  const { error } = await supabase.from('friends').insert({
+  const { error } = await supabaseAdmin.from('friends').insert({
     user_id: userId,
     friend_id: friendId,
     status: 'pending',
@@ -144,7 +144,7 @@ export async function sendFriendRequest(userId: string, friendId: string): Promi
 
 export async function acceptFriendRequest(userId: string, fromUserId: string): Promise<void> {
   // Find the pending request
-  const { data: request, error: findError } = await supabase
+  const { data: request, error: findError } = await supabaseAdmin
     .from('friends')
     .select('id')
     .eq('user_id', fromUserId)
@@ -157,12 +157,12 @@ export async function acceptFriendRequest(userId: string, fromUserId: string): P
   }
 
   // Accept: update existing + create reverse
-  await supabase
+  await supabaseAdmin
     .from('friends')
     .update({ status: 'accepted' })
     .eq('id', request.id)
 
-  await supabase.from('friends').insert({
+  await supabaseAdmin.from('friends').insert({
     user_id: userId,
     friend_id: fromUserId,
     status: 'accepted',

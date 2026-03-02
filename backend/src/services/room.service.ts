@@ -1,4 +1,4 @@
-import supabase from '../lib/database.js'
+import supabase, { supabaseAdmin } from '../lib/database.js'
 import type { RoomDetails, RoomMessage, RoomSync, WSEvent } from '../types/index.js'
 import logger from '../utils/logger.js'
 
@@ -28,7 +28,7 @@ export async function createRoom(
 ): Promise<{ roomId: string; code: string }> {
   const code = generateCode()
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('rooms')
     .insert({
       host_id: hostId,
@@ -100,7 +100,7 @@ export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
 }
 
 export async function addParticipant(roomId: string, userId: string, ws?: unknown): Promise<void> {
-  await supabase.from('room_participants').upsert({
+  await supabaseAdmin.from('room_participants').upsert({
     room_id: roomId,
     user_id: userId,
   })
@@ -113,7 +113,7 @@ export async function addParticipant(roomId: string, userId: string, ws?: unknow
 }
 
 export async function removeParticipant(roomId: string, userId: string): Promise<void> {
-  await supabase
+  await supabaseAdmin
     .from('room_participants')
     .delete()
     .eq('room_id', roomId)
@@ -213,9 +213,9 @@ export async function deleteRoom(roomId: string, userId: string): Promise<void> 
   broadcastToRoom(roomId, { type: 'room_closed', reason: 'host_closed' })
 
   // Clean up
-  await supabase.from('room_participants').delete().eq('room_id', roomId)
-  await supabase.from('room_messages').delete().eq('room_id', roomId)
-  await supabase.from('rooms').delete().eq('id', roomId)
+  await supabaseAdmin.from('room_participants').delete().eq('room_id', roomId)
+  await supabaseAdmin.from('room_messages').delete().eq('room_id', roomId)
+  await supabaseAdmin.from('rooms').delete().eq('id', roomId)
 
   rooms.delete(roomId)
 }
