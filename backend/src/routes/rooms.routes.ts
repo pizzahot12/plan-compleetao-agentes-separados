@@ -7,6 +7,7 @@ const routes = new Hono<{ Variables: AppVariables }>()
 
 // REST endpoints
 routes.post('/', roomsController.createRoom)
+routes.get('/', roomsController.getActiveRooms)
 routes.get('/:code', roomsController.getRoomByCode)
 routes.post('/:roomId/messages', roomsController.addMessage)
 routes.delete('/:roomId', roomsController.deleteRoom)

@@ -41,6 +41,17 @@ export async function getRoomByCode(c: Context) {
   }
 }
 
+export async function getActiveRooms(c: Context<{ Variables: AppVariables }>) {
+  const userId = c.get('userId')
+  try {
+    const rooms = await roomService.getActiveRooms(userId)
+    return c.json(rooms)
+  } catch (err) {
+    logger.error('Error in getActiveRooms:', err)
+    return c.json({ error: 'Error al obtener las salas activas' }, 500)
+  }
+}
+
 export async function addMessage(c: Context<{ Variables: AppVariables }>) {
   const roomId = c.req.param('roomId')
   const body = await c.req.json()

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../lib/database.js'
 import type { RoomDetails, RoomMessage, RoomSync, WSEvent } from '../types/index.js'
+import { getMediaDetails } from './jellyfin.service.js'
 import logger from '../utils/logger.js'
 
 // In-memory room state (for real-time sync - not persisted)
@@ -97,6 +98,72 @@ export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
     }),
     createdAt: room.created_at,
   }
+}
+
+export async function getActiveRooms(userId: string): Promise<any[]> {
+  const { data: rooms, error } = await supabaseAdmin
+    .from('rooms')
+    .select(`
+      id,
+      code,
+      media_id,
+      host_id,
+      name,
+      is_private,
+      created_at,
+      profiles!rooms_host_id_fkey(name, avatar),
+      room_participants(user_id)
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error || !rooms) return []
+
+  // Resolve media details using Jellyfin (which uses memory cache so it's very fast)
+  const activeRooms = await Promise.all(
+    rooms.map(async (room) => {
+      let mediaTitle = room.name
+      let mediaPoster = ''
+      let mediaType = 'movie'
+
+      try {
+        const details = await getMediaDetails(room.media_id)
+        if (details) {
+          mediaTitle = details.title || room.name
+          mediaPoster = details.poster || ''
+          mediaType = details.type || 'movie'
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      const host = room.profiles as unknown as { name: string; avatar?: string }
+      const participants = (room.room_participants as unknown as any[]) || []
+
+      // Determine visibility
+      const isHost = room.host_id === userId
+      const isParticipant = participants.some((p: any) => p.user_id === userId)
+
+      // If private, only host and existing participants can see it
+      if (room.is_private && !isHost && !isParticipant) return null
+
+      return {
+        id: room.id,
+        code: room.code,
+        name: room.name,
+        mediaTitle,
+        mediaPoster,
+        mediaType,
+        hostName: host?.name || 'Usuario',
+        hostAvatar: host?.avatar || '',
+        participantCount: participants.length || 1, // at least host
+        isPrivate: room.is_private,
+        createdAt: room.created_at,
+        isHost
+      }
+    })
+  )
+
+  return activeRooms.filter(r => r !== null)
 }
 
 export async function addParticipant(roomId: string, userId: string, ws?: unknown): Promise<void> {
