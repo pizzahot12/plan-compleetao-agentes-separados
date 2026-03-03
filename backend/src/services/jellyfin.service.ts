@@ -409,21 +409,23 @@ export async function getPlaybackInfo(
     ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode`
     : '';
 
+  // To prevent the "m3u8" override bug, we define AudioStreamIndex natively,
+  // but let Jellyfin set AudioCodec dynamically to aac on the segments 
   const audioParam = targetAudio !== undefined
-    ? `&AudioStreamIndex=${targetAudio}&AudioCodec=aac&TranscodingMaxAudioChannels=2`
+    ? `&AudioStreamIndex=${targetAudio}`
     : '';
 
   const hlsBase = (
     `${JELLYFIN_URL}/Videos/${item.Id}/master.m3u8` +
     `?api_key=${JELLYFIN_API_KEY}` +
     `&MediaSourceId=${source.Id}` +
-    `&DeviceId=watchparty` +
+    `&DeviceId=plexparty` +
     `&PlaySessionId=${playSessionId}` +
     `&VideoCodec=h264` +
+    `&AudioCodec=aac` +
     `&TranscodingMaxAudioChannels=2` +
-    `&SegmentContainer=fmp4` +
-    `&MinSegments=2` +
-    `&BreakOnNonKeyFrames=true` +
+    `&SegmentContainer=ts` +
+    `&MinSegments=1` +
     `&ManifestTranscriptionEnabled=true` +
     `&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported` +
     audioParam +
