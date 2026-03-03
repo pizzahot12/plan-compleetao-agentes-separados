@@ -11,6 +11,47 @@ PlexParty is a watch party application with real-time synchronization. Users can
 - **Backend**: Node.js + Hono + Supabase PostgreSQL + WebSocket (deployed to Render)
 - **Media Server**: Jellyfin integration for streaming content
 
+## Current Status
+
+### Working (commit 5f6559b7)
+- ✅ Movies load from Jellyfin
+- ✅ Video playback works
+- ✅ Room creation and joining
+- ✅ Real-time sync (play/pause/seek)
+- ✅ Chat functionality
+
+### Known Issues
+- ⚠️ Series do NOT load (hardcoded folder IDs don't match user's Jellyfin)
+- ⚠️ Episodes/Seasons selection not working for series
+
+### Current Backend Query (DO NOT CHANGE - it works)
+```typescript
+// backend/src/services/jellyfin.service.ts - getMediaList()
+// Uses hardcoded folder IDs that work for movies
+// Movies: ed2a25286c558a96e1424971742ca250
+// Series: 5ddaa59a73205234890fdcfc683e14ed
+```
+
+## Deployment URLs
+
+- **Frontend**: https://plexparty.vercel.app (or custom)
+- **Backend**: https://watch-together-2x.onrender.com
+- **Jellyfin**: https://jellyfin.watchtogether.nl (user's home server)
+
+## Git Repositories
+
+1. **Frontend**: https://github.com/pizzahot12/plexparty-frontend
+2. **Backend**: https://github.com/pizzahot12/plan-compleetao-agentes-separados
+
+## Working Version (jellyfin-integration-v1 tag)
+
+The last working version is commit `5f6559b7`:
+- Tag: `jellyfin-integration-v1`
+- Movies work, videos play
+- Series don't load (known limitation)
+
+**DO NOT try to fix series loading** - Previous attempts caused 500 errors due to Jellyfin connection issues from Render. The hardcoded folder IDs approach is stable.
+
 ## Project Structure
 
 ```
@@ -297,10 +338,29 @@ Setup in `backend/src/index.ts` using `@hono/node-ws`. Room sync state is in-mem
 
 ## Deployment
 
-- **Frontend**: Vercel (connected to `main` branch of plexparty-frontend repo)
-- **Backend**: Render (connected to plan-compleetao-agentes-separados repo)
+- **Frontend**: Vercel (connected to `master` branch of plexparty-frontend repo)
+- **Backend**: Render (connected to `master` branch of plan-compleetao-agentes-separados repo)
 - **Database**: Supabase (PostgreSQL with RLS)
 - **Media**: Jellyfin server
+
+### Jellyfin Configuration (Backend)
+
+The backend connects to Jellyfin with these environment variables:
+- `JELLYFIN_URL=https://jellyfin.watchtogether.nl`
+- `JELLYFIN_API_KEY=fab44659f9b74192924b80d2a3b0e8a2`
+
+### IMPORTANT - Jellyfin Integration
+
+1. **Keep API key on backend** - Never expose Jellyfin API key to frontend
+2. **Current working query** uses hardcoded folder IDs (Movies: `ed2a25286c558a96e1424971742ca250`)
+3. **DO NOT change the query** to use `IncludeItemTypes` - it causes 500 errors due to Render→Jellyfin connection issues
+4. **If series loading is needed**, user must provide correct folder ID from their Jellyfin server
+
+### Known Issues
+
+- Render has intermittent connection issues to Jellyfin through Cloudflare tunnel
+- Series folder uses hardcoded ID that doesn't exist in user's Jellyfin
+- Audio may not work for some MKV files with AC3 audio codec
 
 ## Common Tasks
 
@@ -326,3 +386,17 @@ Setup in `backend/src/index.ts` using `@hono/node-ws`. Room sync state is in-mem
 2. Verify token is being sent correctly
 3. Check backend WebSocket handlers in `backend/src/index.ts`
 4. Use browser DevTools Network tab → WS tab
+
+## What NOT to Do
+
+1. **DO NOT change the Jellyfin query to use `IncludeItemTypes`** - This causes 500 errors from Render due to connection timeouts
+2. **DO NOT try to dynamically find "Movies" or "Series" folders** - This also causes 500 errors
+3. **DO NOT remove the hardcoded folder IDs** - The current approach with hardcoded IDs is stable
+4. **DO NOT add FFmpeg transcoding** - This causes SIGTERM due to memory limits on Render
+5. **DO NOT expose Jellyfin API key to frontend** - Keep all Jellyfin logic on backend
+
+## WatchParties Reference
+
+For reference, there is a working implementation at: https://github.com/pizzahot12/WatchParties
+
+This project has working HLS streaming with episodes selection. Use it as reference only - do NOT copy code directly.
