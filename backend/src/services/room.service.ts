@@ -298,7 +298,7 @@ export async function addMessage(
   }
 
   // Broadcast to room
-  broadcastToRoom(roomId, { type: 'chat_message', ...message })
+  broadcastToRoom(roomId, { type: 'chat_message', ...message }, userId)
 
   return message
 }
