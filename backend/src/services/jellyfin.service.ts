@@ -99,7 +99,20 @@ export async function getMediaList(
   // Cap per-request limit to avoid Jellyfin timeouts
   const jellyfinLimit = Math.min(limit, 100)
 
-  // Get movies and series separately to avoid issues
+  // type=all: fetch movies + series in parallel with a small limit
+  if (type === 'all') {
+    const halfLimit = Math.min(Math.ceil(jellyfinLimit / 2), 5)
+    const [moviesData, seriesData] = await Promise.all([
+      jellyfinFetch<{ Items: JellyfinItem[] }>(
+        `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&SortBy=CommunityRating&SortOrder=Descending`
+      ).catch(() => ({ Items: [] as JellyfinItem[] })),
+      jellyfinFetch<{ Items: JellyfinItem[] }>(
+        `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&SortBy=CommunityRating&SortOrder=Descending`
+      ).catch(() => ({ Items: [] as JellyfinItem[] })),
+    ])
+    return [...moviesData.Items.map(mapJellyfinToMedia), ...seriesData.Items.map(mapJellyfinToMedia)]
+  }
+
   if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
       `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${jellyfinLimit}`
