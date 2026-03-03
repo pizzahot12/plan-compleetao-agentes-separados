@@ -404,8 +404,10 @@ export async function getPlaybackInfo(
   const targetAudio = audioIndex ?? audioStreams.find(a => a.IsDefault)?.Index ?? audioStreams[0]?.Index
   const targetSub = subtitleIndex ?? -1
 
-  const audioParam = targetAudio !== undefined
-    ? `&AudioStreamIndex=${targetAudio}&AudioCodec=aac&TranscodingMaxAudioChannels=2`
+  // NOTE: We do NOT include AudioCodec here — Jellyfin adds it to segment URLs
+  // automatically and adding it at the master level causes it to be overwritten as "m3u8"
+  const audioStreamParam = targetAudio !== undefined
+    ? `&AudioStreamIndex=${targetAudio}`
     : ''
   const subParam = targetSub >= 0
     ? `&SubtitleStreamIndex=${targetSub}&SubtitleMethod=Encode`
@@ -418,11 +420,11 @@ export async function getPlaybackInfo(
     `&DeviceId=plexparty` +
     `&PlaySessionId=${playSessionId}` +
     `&VideoCodec=h264` +
+    `&AudioCodec=aac` +
     `&TranscodingMaxAudioChannels=2` +
-    `&SegmentContainer=fmp4` +
-    `&MinSegments=2` +
-    `&BreakOnNonKeyFrames=true` +
-    audioParam +
+    `&SegmentContainer=ts` +     // fmp4 causes 500 on many Jellyfin configs; ts is universal
+    `&MinSegments=1` +
+    audioStreamParam +
     subParam
   )
 
