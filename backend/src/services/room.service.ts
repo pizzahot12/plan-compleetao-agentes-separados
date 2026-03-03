@@ -105,6 +105,27 @@ export async function addParticipant(roomId: string, userId: string, ws?: unknow
     user_id: userId,
   })
 
+  // If room is not in memory (e.g. server restarted), auto-initialize it from DB
+  if (!rooms.has(roomId)) {
+    const { data: room } = await supabaseAdmin
+      .from('rooms')
+      .select('id')
+      .eq('id', roomId)
+      .single()
+
+    if (room) {
+      logger.info(`Re-initializing room ${roomId} in memory after server restart`)
+      rooms.set(roomId, {
+        status: 'pause',
+        currentTime: 0,
+        participants: new Map(),
+      })
+    } else {
+      logger.warn(`Room ${roomId} not found in DB, cannot add participant`)
+      return
+    }
+  }
+
   // Add to in-memory
   const state = rooms.get(roomId)
   if (state && ws) {
