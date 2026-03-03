@@ -26,8 +26,24 @@ export async function createRoom(
   hostId: string,
   mediaId: string,
   name: string,
-  isPrivate: boolean
+  isPrivate: boolean,
+  hostEmail?: string
 ): Promise<{ roomId: string; code: string }> {
+  // Ensure the user has a profile to prevent foreign key constraint errors (500)
+  const { data: profile } = await supabaseAdmin.from('profiles').select('id').eq('id', hostId).single()
+  if (!profile) {
+    try {
+      await supabaseAdmin.from('profiles').insert({
+        id: hostId,
+        name: hostEmail?.split('@')[0] || 'User',
+        email: hostEmail || ''
+      })
+      logger.info(`Auto-created profile for user ${hostId} before creating room`)
+    } catch (e) {
+      logger.error('Failed to auto-create profile:', e)
+    }
+  }
+
   const code = generateCode()
 
   const { data, error } = await supabaseAdmin
@@ -297,8 +313,8 @@ export async function addMessage(
     timestamp: data.created_at,
   }
 
-  // Broadcast to room
-  broadcastToRoom(roomId, { type: 'chat_message', ...message }, userId)
+  // Broadcast to room (including sender, because the frontend removed optimistic updates)
+  broadcastToRoom(roomId, { type: 'chat_message', ...message })
 
   return message
 }

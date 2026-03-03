@@ -13,13 +13,15 @@ export async function createRoom(c: Context<{ Variables: AppVariables }>) {
   }
 
   const userId = c.get('userId')
+  const userEmail = c.get('userEmail')
 
   try {
     const room = await roomService.createRoom(
       userId,
       parsed.data.mediaId,
       parsed.data.name,
-      parsed.data.isPrivate
+      parsed.data.isPrivate,
+      userEmail
     )
     return c.json(room, 201)
   } catch (err) {
