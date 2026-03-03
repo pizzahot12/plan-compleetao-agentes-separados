@@ -31,6 +31,7 @@ export async function getCachedMedia(mediaId: string): Promise<MediaItem | null>
     duration: data.duration || 0,
     synopsis: data.synopsis || '',
     genres: data.genres || [],
+    type: data.type || 'movie',
   }
 }
 
@@ -73,6 +74,7 @@ export async function getCachedMediaList(
     duration: item.duration || 0,
     synopsis: item.synopsis || '',
     genres: item.genres || [],
+    type: item.type || 'movie',
   }))
 }
 

@@ -11,6 +11,7 @@ const mockMovies: MediaItem[] = [
     duration: 169,
     synopsis: 'Un grupo de exploradores hace uso de un agujero de gusano recién descubierto para superar las limitaciones de los viajes espaciales tripulados y conquistar las inmensas distancias involucradas en un viaje interestelar.',
     genres: ['Ciencia Ficción', 'Aventura', 'Drama'],
+    type: 'movie',
   },
   {
     id: 'movie-2',
@@ -22,6 +23,7 @@ const mockMovies: MediaItem[] = [
     duration: 152,
     synopsis: 'Batman tiene que mantener el equilibrio entre su heroicidad y su uso de la violencia, mientras combate al Joker, un criminal que quiere sumir Ciudad Gótica en la anarquía.',
     genres: ['Acción', 'Crimen', 'Drama'],
+    type: 'movie',
   },
   {
     id: 'movie-3',
@@ -33,6 +35,7 @@ const mockMovies: MediaItem[] = [
     duration: 154,
     synopsis: 'La vida de un boxeador, dos sicarios, la esposa de un gánster y dos bandidos se entrelaza en una historia de violencia y redención.',
     genres: ['Crimen', 'Drama'],
+    type: 'movie',
   },
   {
     id: 'movie-4',
@@ -44,6 +47,7 @@ const mockMovies: MediaItem[] = [
     duration: 136,
     synopsis: 'Un hacker descubre que el mundo en el que vive es solo una simulación creada por máquinas, y se une a un grupo de rebeldes para combatirlas.',
     genres: ['Ciencia Ficción', 'Acción'],
+    type: 'movie',
   },
   {
     id: 'movie-5',
@@ -55,6 +59,7 @@ const mockMovies: MediaItem[] = [
     duration: 178,
     synopsis: 'Un hobbit llamado Frodo se embarca en un viaje épico para destruir un anillo mágico antes de que caiga en manos del Señor Oscuro Sauron.',
     genres: ['Fantasía', 'Aventura', 'Drama'],
+    type: 'movie',
   },
   {
     id: 'movie-6',
@@ -66,6 +71,7 @@ const mockMovies: MediaItem[] = [
     duration: 148,
     synopsis: 'Un ladrón especializado en extraer secretos del subconsciente durante los sueños recibe la tarea de implantar una idea en la mente de un heredero empresarial.',
     genres: ['Ciencia Ficción', 'Acción', 'Suspense'],
+    type: 'movie',
   },
   {
     id: 'movie-7',
@@ -77,6 +83,7 @@ const mockMovies: MediaItem[] = [
     duration: 175,
     synopsis: 'El patriarca de una familia mafiosa transfiere el control de su imperio a su hijo menor, Michael, quien al principio quería mantenerse alejado del negocio familiar.',
     genres: ['Crimen', 'Drama'],
+    type: 'movie',
   },
   {
     id: 'movie-8',
@@ -88,6 +95,7 @@ const mockMovies: MediaItem[] = [
     duration: 132,
     synopsis: 'Una familia pobre conspira para conseguir trabajo en la casa de una familia adinerada, infiltrándose en sus vidas de una manera inesperada.',
     genres: ['Drama', 'Comedia', 'Suspense'],
+    type: 'movie',
   },
   {
     id: 'movie-9',
@@ -99,6 +107,7 @@ const mockMovies: MediaItem[] = [
     duration: 105,
     synopsis: 'Miguel sueña con convertirse en músico, pero su familia lo prohíbe. En el Día de los Muertos, viaja al mundo de los espíritus para descubrir la verdad sobre su historia familiar.',
     genres: ['Animación', 'Fantasía', 'Comedia'],
+    type: 'movie',
   },
   {
     id: 'movie-10',
@@ -110,6 +119,7 @@ const mockMovies: MediaItem[] = [
     duration: 181,
     synopsis: 'Después de los eventos devastadores de Infinity War, los Vengadores restantes deben reunirse una vez más para revertir las acciones de Thanos y restaurar el equilibrio del universo.',
     genres: ['Acción', 'Ciencia Ficción', 'Aventura'],
+    type: 'movie',
   },
 ]
 
@@ -124,6 +134,7 @@ const mockSeries: MediaItem[] = [
     duration: 47,
     synopsis: 'Un profesor de química de secundaria con cáncer terminal se asocia con un exestudiante para asegurar el futuro de su familia fabricando y vendiendo metanfetamina.',
     genres: ['Drama', 'Crimen', 'Suspense'],
+    type: 'series',
   },
   {
     id: 'series-2',
@@ -135,6 +146,7 @@ const mockSeries: MediaItem[] = [
     duration: 60,
     synopsis: 'Nueve familias nobles luchan por el control del mítico reino de Poniente, mientras un antiguo enemigo regresa después de miles de años.',
     genres: ['Drama', 'Fantasía', 'Acción'],
+    type: 'series',
   },
   {
     id: 'series-3',
@@ -146,6 +158,7 @@ const mockSeries: MediaItem[] = [
     duration: 50,
     synopsis: 'Cuando un niño desaparece, un pequeño pueblo descubre un misterio que involucra experimentos secretos, fuerzas sobrenaturales y una niña extraña.',
     genres: ['Drama', 'Misterio', 'Ciencia Ficción'],
+    type: 'series',
   },
   {
     id: 'series-4',
@@ -157,6 +170,7 @@ const mockSeries: MediaItem[] = [
     duration: 40,
     synopsis: 'Un cazarrecompensas solitario en una galaxia muy, muy lejana protege a una misteriosa criatura mientras es perseguido por enemigos mortales.',
     genres: ['Ciencia Ficción', 'Acción', 'Aventura'],
+    type: 'series',
   },
   {
     id: 'series-5',
@@ -168,6 +182,7 @@ const mockSeries: MediaItem[] = [
     duration: 22,
     synopsis: 'Un documental que muestra la vida cotidiana de los empleados de la sucursal de Scranton de Dunder Mifflin Paper Company.',
     genres: ['Comedia'],
+    type: 'series',
   },
   {
     id: 'series-6',
@@ -179,6 +194,7 @@ const mockSeries: MediaItem[] = [
     duration: 60,
     synopsis: 'La desaparición de niños en una pequeña ciudad alemana revela un misterio que abarca cuatro generaciones y desafía la naturaleza del tiempo.',
     genres: ['Drama', 'Misterio', 'Ciencia Ficción'],
+    type: 'series',
   },
   {
     id: 'series-7',
@@ -190,6 +206,7 @@ const mockSeries: MediaItem[] = [
     duration: 60,
     synopsis: 'Una banda familiar ambientada en Birmingham, Inglaterra, después de la Primera Guerra Mundial, centrada en la ambiciosa y peligrosa familia Shelby.',
     genres: ['Drama', 'Crimen'],
+    type: 'series',
   },
   {
     id: 'series-8',
@@ -201,6 +218,7 @@ const mockSeries: MediaItem[] = [
     duration: 60,
     synopsis: 'Geralt de Rivia, un cazador de monstruos mutante, lucha por encontrar su lugar en un mundo donde la gente es más malvada que las bestias.',
     genres: ['Drama', 'Fantasía', 'Acción'],
+    type: 'series',
   },
   {
     id: 'series-9',
@@ -212,6 +230,7 @@ const mockSeries: MediaItem[] = [
     duration: 70,
     synopsis: 'Un grupo de ladrones planea el mayor robo de la historia: imprimir miles de millones de euros en la Fábrica Nacional de Moneda y Timbre de España.',
     genres: ['Drama', 'Crimen', 'Suspense'],
+    type: 'series',
   },
   {
     id: 'series-10',
@@ -223,6 +242,7 @@ const mockSeries: MediaItem[] = [
     duration: 22,
     synopsis: 'Seis amigos en Nueva York navegan por la vida, el amor y las carreras profesionales mientras pasan tiempo juntos en su café favorito.',
     genres: ['Comedia', 'Romance'],
+    type: 'series',
   },
 ]
 
