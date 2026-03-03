@@ -409,11 +409,11 @@ export async function getPlaybackInfo(
     ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode`
     : '';
 
-  // To prevent the "m3u8" override bug, we define AudioStreamIndex natively,
-  // but let Jellyfin set AudioCodec dynamically to aac on the segments 
+  // To prevent the "m3u8" override bug, we define AudioStreamIndex natively if it exists,
+  // but ALWAYS enforce AudioCodec=aac so Jellyfin doesn't derive "m3u8" from the playlist extension.
   const audioParam = targetAudio !== undefined
     ? `&AudioStreamIndex=${targetAudio}&AudioCodec=aac&TranscodingMaxAudioChannels=2`
-    : '';
+    : `&AudioCodec=aac&TranscodingMaxAudioChannels=2`;
 
   const hlsBase = (
     `${JELLYFIN_URL}/Videos/${item.Id}/master.m3u8` +
