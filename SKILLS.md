@@ -1,6 +1,8 @@
 # SKILLS.md - Recursos para PlexParty
 
-Recursos recomendados para desarrollar el proyecto PlexParty (watch party app con streaming).
+Recursos recomendados basados en la comunidad para desarrollar el proyecto PlexParty (watch party app con streaming).
+
+---
 
 ## Stack Principal
 
@@ -17,7 +19,7 @@ Recursos recomendados para desarrollar el proyecto PlexParty (watch party app co
 - https://redux-toolkit.js.org/ (alternativa)
 
 #### Video Streaming
-- https://github.com/video-dev/hls.js (HLS para streaming adaptivo)
+- https://github.com/video-dev/hls.js (HLS para streaming adaptativo)
 - https://plyr.io/ (player UI)
 - https://videojs.com/ (alternativa más robusta)
 
@@ -46,69 +48,123 @@ Recursos recomendados para desarrollar el proyecto PlexParty (watch party app co
 
 #### WebSocket Server
 - https://github.com/honojs/node-ws (WebSocket para Hono)
-- https://socket.io/ (alternativa)
-
-#### Authentication
-- https://jwt.io/ (JWT)
-- https://supabase.com/docs/guides/auth
+- https://socket.io/ (alternativa más robusta con rooms)
 
 ---
 
-### Jellyfin Integration
+## Mejores Prácticas de la Comunidad
 
-#### API
-- https://api.jellyfin.org/ (documentación oficial)
-- https://github.com/jellyfin/jellyfin-apiclient-javascript (cliente)
+### Video Streaming con HLS.js
 
-#### Streaming
-- https://jellyfin.org/docs/general/server/transcoding/
-- https://github.com/AgentD/scripts/blob/master/documentation/hls.md
-
----
-
-## DevOps
-
-### Deployment
-- https://vercel.com/docs (frontend)
-- https://render.com/docs (backend)
-- https://docs.docker.com/
-
-### CI/CD
-- https://docs.github.com/en/actions
-- https://github.com/marketplace?type=
-
----
-
-## Proyecto de Referencia
-
-### WatchParties (funcionando)
-- Repo: https://github.com/pizzahot12/WatchParties
-- Tiene HLS streaming con selección de episodios
-- Usar como referencia para implementar features
-
----
-
-## Patrones Importantes
-
-### Sincronización de Video
-```
-1. Host envia: { type: 'play', time: 123.45 }
-2. Todos los clientes reproducen desde ese tiempo
-3. Intervalo de sync cada 1-2 segundos
-```
-
-### Queries a Jellyfin (LO QUE FUNCIONA)
+**Patrón recomendado para React:**
 ```typescript
-// NO USAR IncludeItemTypes - causa 500 errores desde Render
-// USAR folder IDs hardcodeados
-/users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&Recursive=true
+import Hls from 'hls.js';
+import { useRef, useEffect } from 'react';
+
+function VideoPlayer({ src }) {
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      hlsRef.current = hls;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = src;
+    }
+    return () => hlsRef.current?.destroy();
+  }, [src]);
+
+  return <video ref={videoRef} controls />;
+}
 ```
 
-### Errores Comunes a Evitar
-1. ❌ No usar IncludeItemTypes (500 errors)
-2. ❌ No hacer queries dinámicas a carpetas (timeout)
-3. ❌ No agregar FFmpeg transcoding (SIGTERM por memoria)
-4. ❌ No exponer API key de Jellyfin al frontend
+**Mejores prácticas:**
+- Usar `enableWorker: true` para rendimiento
+- `lowLatencyMode: true` para streaming en vivo
+- Siempre manejar el evento `ERROR` para recovery
+- Hacer fallback a HLS nativo en Safari
+
+---
+
+### Sincronización con WebSocket/Socket.io
+
+**Arquitectura de sincronización (según comunidad):**
+
+```
+1. Host envía: { type: 'play', time: 123.45, videoId: 'xxx' }
+2. Server difunde a todos en la sala
+3. Clientes reproducen desde ese tiempo
+4. Intervalo de sync cada 1-2 segundos
+```
+
+**Patrón recomendado:**
+```typescript
+// Server (Socket.io)
+io.on('connection', (socket) => {
+  socket.on('join-room', (roomId) => {
+    socket.join(roomId);
+  });
+
+  socket.on('video-action', ({ roomId, action, time }) => {
+    // Broadcast a todos EXCEPTO el emisor
+    socket.to(roomId).emit('sync', { action, time });
+  });
+});
+```
+
+**Room Management:**
+- Usar room IDs únicos e impredecibles
+- Trackear membresía en aplicación si es necesario
+- Usar Redis adapter para escalar multi-servidor
+- Limitar eventos broadcast a rooms específicos
+
+**Errores comunes a evitar:**
+- No hacer broadcast a todos (usar `socket.to(room)`)
+- No manejar reconexión automáticamente
+- No validar room antes de enviar eventos
+
+---
+
+### Proyectos de Referencia (Watch Party)
+
+| Proyecto | Tech Stack | Estrellas | URL |
+|----------|-----------|-----------|-----|
+| **streamparty** | React + Socket.io + Express | 85 | https://github.com/jengmicah/streamparty |
+| **sludgy-sync** | React + Socket.io + Next.js + HLS | - | https://github.com/ericesposito/sludgy-sync |
+| **WatchTogether** | React + Socket.io + YouTube API | - | https://github.com/iBVerma/Watch-Together |
+| **go-party** | Go + Next.js + WebSockets | - | https://github.com/raghavyuva/go-party |
+| **PeerPlay** | Next.js + Socket.io | 2 | https://github.com/johnexzy/peerplay |
+| **WatchParties** (tu referencia) | Similar a PlexParty | - | https://github.com/pizzahot12/WatchParties |
+
+---
+
+## Errores Comunes y Soluciones
+
+### 1. Render → Jellyfin 500 errors
+- **Causa**: Timeouts de conexión desde Render a Jellyfin
+- **Solución**: NO usar `IncludeItemTypes`, usar folder IDs hardcodeados
+
+### 2. FFmpeg SIGTERM
+- **Causa**: Memoria insuficiente en Render
+- **Solución**: No hacer transcodificación en servidor, delegar a Jellyfin
+
+### 3. Videos no cargan
+- **Causa**: CORS o URLs incorrectas
+- **Solución**: Verificar que Jellyfin permita requests desde el dominio
+
+### 4. Sync no funciona
+- **Causa**: Latencia alta o eventos no enviados
+- **Solución**: Usar `socket.broadcast.to(room)` en lugar de `io.emit`
 
 ---
 
@@ -155,3 +211,16 @@ VITE_SUPABASE_ANON_KEY=...
 
 1. Frontend: https://github.com/pizzahot12/plexparty-frontend
 2. Backend: https://github.com/pizzahot12/plan-compleetao-agentes-separados
+
+---
+
+## Recursos Adicionales
+
+### Artículos Recomendados
+- https://blog.logrocket.com/next-js-real-time-video-streaming-hls-js-alternatives/
+- https://videosdk.live/developer-hub/developer-hub/socketio/socketio-rooms
+- https://getstream.io/blog/webrtc-websocket-av-sync/
+
+### WebSocket vs WebRTC
+- **WebSocket**: Para sincronización de control (play/pause/seek)
+- **WebRTC**: Para chat de voz/video en tiempo real
