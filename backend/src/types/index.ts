@@ -174,6 +174,7 @@ export interface JellyfinItem {
   SeriesId?: string
   SeasonId?: string
   Type?: string
+  RecursiveItemCount?: number
 }
 
 export interface JellyfinPerson {

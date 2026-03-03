@@ -25,7 +25,7 @@ export async function getMediaList(c: Context) {
 
     // Cache in background
     const type = query.data.type === 'series' ? 'series' : 'movie'
-    cacheService.cacheMediaBatch(media, type as 'movie' | 'series').catch(() => {})
+    cacheService.cacheMediaBatch(media, type as 'movie' | 'series').catch(() => { })
 
     return c.json(media)
   } catch (err) {
@@ -38,15 +38,14 @@ export async function getMediaDetails(c: Context) {
   const id = c.req.param('id')
 
   try {
-    const cached = await cacheService.getCachedMedia(id)
-    if (cached) {
-      logger.debug(`Serving media details from cache: ${id}`)
-    }
-
+    // jellyfin.service has RAM cache (10 min TTL) — no Supabase roundtrip needed
     const details = await jellyfinService.getMediaDetails(id)
 
-    cacheService.cacheMediaDetails(details).catch(() => {})
+    // Cache background write to Supabase (non-blocking)
+    cacheService.cacheMediaDetails(details).catch(() => { })
 
+    // Tell browser/CDN to cache response for 5 minutes
+    c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
     return c.json(details)
   } catch (err) {
     logger.error('getMediaDetails error:', (err as Error).message)

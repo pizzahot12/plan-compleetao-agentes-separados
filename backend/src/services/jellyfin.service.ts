@@ -11,6 +11,27 @@ const JELLYFIN_API_KEY = process.env.JELLYFIN_API_KEY || ''
 
 let jellyfinUserId = ''
 
+// ─── In-process RAM cache (no Supabase round-trip on cache hit) ───────────────
+// TTL constants (ms)
+const TTL_DETAILS = 10 * 60 * 1000  // 10 min — details don't change often
+const TTL_SEASONS = 5 * 60 * 1000  // 5 min
+const TTL_EPISODES = 5 * 60 * 1000  // 5 min
+const TTL_LIST = 2 * 60 * 1000     // 2 min for media lists
+
+interface CacheEntry<T> { value: T; expiresAt: number }
+const _cache = new Map<string, CacheEntry<unknown>>()
+
+function cacheGet<T>(key: string): T | null {
+  const entry = _cache.get(key) as CacheEntry<T> | undefined
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) { _cache.delete(key); return null }
+  return entry.value
+}
+function cacheSet<T>(key: string, value: T, ttl: number): void {
+  _cache.set(key, { value, expiresAt: Date.now() + ttl })
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 if (!JELLYFIN_URL || !JELLYFIN_API_KEY) {
   logger.warn('JELLYFIN_URL or JELLYFIN_API_KEY not configured')
 }
@@ -94,12 +115,25 @@ export async function getMediaList(
   skip: number = 0,
   limit: number = 20
 ): Promise<MediaItem[]> {
+  const cacheKey = `list:${type}:${skip}:${limit}`
+  const cached = cacheGet<MediaItem[]>(cacheKey)
+  if (cached) {
+    logger.debug(`[RAM cache HIT] list ${cacheKey}`)
+    return cached
+  }
+
   const userId = await getJellyfinUserId()
 
   // Cap per-request limit to avoid Render/Jellyfin timeouts on free tier
   const jellyfinLimit = Math.min(limit, 50)
 
-  const baseParams = `StartIndex=${skip}&Limit=${jellyfinLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
+  // Fetch RecursiveItemCount to filter out empty series
+  const baseParams = `StartIndex=${skip}&Limit=${jellyfinLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
+
+  const filterEmptySeries = (item: JellyfinItem) =>
+    item.Type !== 'Series' || (item.RecursiveItemCount !== undefined && item.RecursiveItemCount > 0)
+
+  let result: MediaItem[]
 
   // type=all: fetch movies + series in parallel
   if (type === 'all') {
@@ -109,27 +143,38 @@ export async function getMediaList(
         `/Users/${userId}/Items?IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
+        `/Users/${userId}/Items?IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&Recursive=true`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
     ])
-    return [...moviesData.Items.map(mapJellyfinToMedia), ...seriesData.Items.map(mapJellyfinToMedia)]
-  }
-
-  if (type === 'series') {
+    result = [
+      ...moviesData.Items.map(mapJellyfinToMedia),
+      ...seriesData.Items.filter((i) => (i.RecursiveItemCount ?? 0) > 0).map(mapJellyfinToMedia)
+    ]
+  } else if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
       `/Users/${userId}/Items?IncludeItemTypes=Series&${baseParams}`
     )
-    return data.Items.map(mapJellyfinToMedia)
+    result = data.Items.filter(filterEmptySeries).map(mapJellyfinToMedia)
+  } else {
+    // movies
+    const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
+      `/Users/${userId}/Items?IncludeItemTypes=Movie&${baseParams}`
+    )
+    result = data.Items.map(mapJellyfinToMedia)
   }
 
-  // movies
-  const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-    `/Users/${userId}/Items?IncludeItemTypes=Movie&${baseParams}`
-  )
-  return data.Items.map(mapJellyfinToMedia)
+  cacheSet(cacheKey, result, TTL_LIST)
+  return result
 }
 
 export async function getMediaDetails(mediaId: string): Promise<MediaDetails> {
+  const cacheKey = `details:${mediaId}`
+  const cached = cacheGet<MediaDetails>(cacheKey)
+  if (cached) {
+    logger.debug(`[RAM cache HIT] details ${mediaId}`)
+    return cached
+  }
+
   const userId = await getJellyfinUserId()
   const item = await jellyfinFetch<JellyfinItem>(
     `/Users/${userId}/Items/${mediaId}?Fields=Overview,Genres,People,MediaStreams`
@@ -153,12 +198,15 @@ export async function getMediaDetails(mediaId: string): Promise<MediaDetails> {
     .filter((s) => s.Type === 'Audio' && s.Language)
     .map((s) => s.Language!)
 
-  return {
+  const result: MediaDetails = {
     ...base,
     cast,
     subtitles: [...new Set(subtitles)],
     audio: [...new Set(audio)],
   }
+
+  cacheSet(cacheKey, result, TTL_DETAILS)
+  return result
 }
 
 export interface SubtitleInfo {
@@ -223,27 +271,38 @@ export interface EpisodeInfo {
 }
 
 export async function getSeasons(seriesId: string): Promise<Array<{ id: string; name: string; number: number }>> {
+  const cacheKey = `seasons:${seriesId}`
+  const cached = cacheGet<Array<{ id: string; name: string; number: number }>>(cacheKey)
+  if (cached) { logger.debug(`[RAM cache HIT] seasons ${seriesId}`); return cached }
+
   const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
     `/Shows/${seriesId}/Seasons`
   )
 
-  return data.Items.map((item) => ({
+  const result = data.Items.map((item) => ({
     id: item.Id,
     name: item.Name,
     number: item.IndexNumber || 0,
   }))
+
+  cacheSet(cacheKey, result, TTL_SEASONS)
+  return result
 }
 
 export async function getEpisodes(
   seriesId: string,
   seasonId?: string
 ): Promise<EpisodeInfo[]> {
+  const cacheKey = `episodes:${seriesId}:${seasonId ?? 'all'}`
+  const cached = cacheGet<EpisodeInfo[]>(cacheKey)
+  if (cached) { logger.debug(`[RAM cache HIT] episodes ${cacheKey}`); return cached }
+
   const params = seasonId ? `&SeasonId=${seasonId}` : ''
   const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
     `/Shows/${seriesId}/Episodes?Fields=Overview${params}`
   )
 
-  return data.Items.map((item) => ({
+  const result = data.Items.map((item) => ({
     id: item.Id,
     title: item.Name,
     season: item.ParentIndexNumber || 1,
@@ -254,6 +313,9 @@ export async function getEpisodes(
       ? `${JELLYFIN_URL}/Items/${item.Id}/Images/Primary?api_key=${JELLYFIN_API_KEY}`
       : '',
   }))
+
+  cacheSet(cacheKey, result, TTL_EPISODES)
+  return result
 }
 
 export function getStreamUrl(
