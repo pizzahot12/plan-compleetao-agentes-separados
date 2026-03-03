@@ -19,14 +19,38 @@ export async function getFriends(userId: string): Promise<Friend[]> {
     throw new Error('Error al obtener amigos')
   }
 
+  const friendIds = (data || []).map((f) => f.friend_id)
+  const activeRoomsMap: Record<string, { code: string; name: string }> = {}
+
+  if (friendIds.length > 0) {
+    const { data: participants } = await supabaseAdmin
+      .from('room_participants')
+      .select('user_id, rooms(code, name)')
+      .in('user_id', friendIds)
+
+    if (participants) {
+      for (const p of participants) {
+        if (p.rooms) {
+          activeRoomsMap[p.user_id] = Array.isArray(p.rooms) ? p.rooms[0] : p.rooms
+        }
+      }
+    }
+  }
+
   return (data || []).map((f) => {
     const profile = f.profiles as unknown as { id: string; name: string; avatar?: string }
+    const room = activeRoomsMap[profile.id]
+
     return {
       id: profile.id,
       name: profile.name,
       avatar: profile.avatar,
-      status: 'offline' as const, // TODO: implement online tracking via presence
-    }
+      status: room ? 'online' : 'offline', // They are online if they are in a room
+      isOnline: !!room,
+      isWatching: !!room,
+      roomCode: room?.code,
+      currentMedia: room?.name,
+    } as Friend
   })
 }
 
