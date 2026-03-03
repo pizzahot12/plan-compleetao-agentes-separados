@@ -83,12 +83,14 @@ export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
     .eq('room_id', room.id)
 
   const host = room.profiles as unknown as { id: string; name: string; avatar?: string }
+  const state = rooms.get(room.id)
+  const isOnline = (userId: string) => state ? state.participants.has(userId) : false
 
   return {
     roomId: room.id,
     code: room.code,
     mediaId: room.media_id,
-    host: { id: host.id, name: host.name, avatar: host.avatar, isWatching: true },
+    host: { id: host.id, name: host.name, avatar: host.avatar, isWatching: true, isOnline: isOnline(host.id) },
     participants: (participants || []).map((p) => {
       const profile = p.profiles as unknown as { id: string; name: string; avatar?: string }
       return {
@@ -96,6 +98,7 @@ export async function getRoomByCode(code: string): Promise<RoomDetails | null> {
         name: profile.name,
         avatar: profile.avatar,
         isWatching: true,
+        isOnline: isOnline(profile.id),
       }
     }),
     createdAt: room.created_at,
@@ -288,7 +291,7 @@ export async function addMessage(
   }
 
   // Broadcast to room
-  broadcastToRoom(roomId, { type: 'message', ...message })
+  broadcastToRoom(roomId, { type: 'chat_message', ...message })
 
   return message
 }
@@ -342,4 +345,33 @@ export async function kickUser(roomId: string, hostId: string, targetUserId: str
 
   // Broadcast to others
   broadcastToRoom(roomId, { type: 'user_left', userId: targetUserId })
+}
+
+// Auto-cleanup worker for empty rooms older than 5 minutes
+export async function cleanupEmptyRooms(): Promise<void> {
+  try {
+    const { data: activeRooms, error } = await supabaseAdmin
+      .from('rooms')
+      .select('id, created_at, room_participants(user_id)')
+
+    if (error || !activeRooms) return
+
+    const now = new Date()
+    const fiveMinutes = 5 * 60 * 1000
+
+    for (const room of activeRooms) {
+      const parts = room.room_participants as unknown as any[]
+      const count = parts ? parts.length : 0
+      const createdAt = new Date(room.created_at)
+
+      if (count === 0 && (now.getTime() - createdAt.getTime()) > fiveMinutes) {
+        logger.info(`Cleaning up abandoned empty room: ${room.id}`)
+        await supabaseAdmin.from('room_messages').delete().eq('room_id', room.id)
+        await supabaseAdmin.from('rooms').delete().eq('id', room.id)
+        rooms.delete(room.id)
+      }
+    }
+  } catch (err) {
+    logger.error('Error cleaning up rooms:', err)
+  }
 }

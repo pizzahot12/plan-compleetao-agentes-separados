@@ -203,15 +203,20 @@ export async function acceptFriendRequest(userId: string, fromUserId: string): P
 
 export async function removeFriend(userId: string, friendId: string): Promise<void> {
   // Remove bidirectional friendship
-  const { error } = await supabaseAdmin
+  const { error: error1 } = await supabaseAdmin
     .from('friends')
     .delete()
-    .or(
-      `and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`
-    )
+    .eq('user_id', userId)
+    .eq('friend_id', friendId)
 
-  if (error) {
-    logger.error('Failed to remove friend:', error.message)
+  const { error: error2 } = await supabaseAdmin
+    .from('friends')
+    .delete()
+    .eq('user_id', friendId)
+    .eq('friend_id', userId)
+
+  if (error1 || error2) {
+    logger.error('Failed to remove friend:', error1?.message || error2?.message)
     throw new Error('Error al eliminar amigo')
   }
 
@@ -223,9 +228,14 @@ export async function blockUser(userId: string, targetId: string): Promise<void>
   await supabaseAdmin
     .from('friends')
     .delete()
-    .or(
-      `and(user_id.eq.${userId},friend_id.eq.${targetId}),and(user_id.eq.${targetId},friend_id.eq.${userId})`
-    )
+    .eq('user_id', userId)
+    .eq('friend_id', targetId)
+
+  await supabaseAdmin
+    .from('friends')
+    .delete()
+    .eq('user_id', targetId)
+    .eq('friend_id', userId)
 
   // Insert block record
   await supabaseAdmin.from('friends').insert({

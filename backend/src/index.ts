@@ -13,6 +13,7 @@ import friendsRoutes from './routes/friends.routes.js'
 import notificationsRoutes from './routes/notifications.routes.js'
 import watchHistoryRoutes from './routes/watch-history.routes.js'
 import { roomsController } from './routes/rooms.routes.js'
+import { cleanupEmptyRooms } from './services/room.service.js'
 import type { AppVariables, WSEvent } from './types/index.js'
 import { verifyToken } from './lib/jwt.js'
 import logger from './utils/logger.js'
@@ -134,5 +135,10 @@ if (process.env.NODE_ENV === 'production') {
   }, 14 * 60 * 1000) // 14 minutos
   logger.info('Self-ping enabled to prevent cold starts')
 }
+
+// Background task: clean empty rooms
+setInterval(async () => {
+  await cleanupEmptyRooms()
+}, 5 * 60 * 1000) // 5 minutos
 
 export default app
