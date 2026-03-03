@@ -85,6 +85,7 @@ function mapJellyfinToMedia(item: JellyfinItem): MediaItem {
     duration: item.RunTimeTicks ? ticksToSeconds(item.RunTimeTicks) : 0,
     synopsis: item.Overview || '',
     genres: item.Genres || [],
+    type: item.Type === 'Series' ? 'series' : 'movie',
   }
 }
 

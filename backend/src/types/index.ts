@@ -38,6 +38,7 @@ export interface MediaItem {
   duration: number
   synopsis: string
   genres: string[]
+  type: string
 }
 
 export interface MediaDetails extends MediaItem {
