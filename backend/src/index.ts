@@ -121,4 +121,18 @@ const server = serve(
 // Inject WebSocket support into the server
 injectWebSocket(server)
 
+// Self-ping every 14 minutes to prevent Render Free Tier cold starts (hiberna a los 15 min)
+if (process.env.NODE_ENV === 'production') {
+  const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`
+  setInterval(async () => {
+    try {
+      await fetch(`${RENDER_URL}/health`)
+      logger.debug('Self-ping OK - server kept alive')
+    } catch {
+      // ignore
+    }
+  }, 14 * 60 * 1000) // 14 minutos
+  logger.info('Self-ping enabled to prevent cold starts')
+}
+
 export default app
