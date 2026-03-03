@@ -94,21 +94,21 @@ export async function getMediaList(
   limit: number = 20
 ): Promise<MediaItem[]> {
   const userId = await getJellyfinUserId()
-  
+
   // Get movies and series separately to avoid issues
   if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&Recursive=true&StartIndex=${skip}&Limit=${limit}`
+      `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${limit}&SortBy=DateCreated,SortName&SortOrder=Descending`
     )
-    return data.Items.filter(item => item.Type === 'Series').map(mapJellyfinToMedia)
+    return data.Items.map(mapJellyfinToMedia)
   }
-  
+
   // For movies, use the Movies folder
   const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-    `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&Recursive=true&StartIndex=${skip}&Limit=${limit}`
+    `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${limit}&SortBy=DateCreated,SortName&SortOrder=Descending`
   )
-  
-  return data.Items.filter(item => item.Type === 'Movie').map(mapJellyfinToMedia)
+
+  return data.Items.map(mapJellyfinToMedia)
 }
 
 export async function getMediaDetails(mediaId: string): Promise<MediaDetails> {
