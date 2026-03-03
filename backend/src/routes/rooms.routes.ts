@@ -12,6 +12,8 @@ routes.get('/:code', roomsController.getRoomByCode)
 routes.post('/:roomId/messages', roomsController.addMessage)
 routes.delete('/:roomId', roomsController.deleteRoom)
 routes.post('/:roomId/kick/:userId', roomsController.kickUser)
+routes.post('/:roomId/invite/:userId', roomsController.inviteUser)
+routes.patch('/:roomId/privacy', roomsController.updatePrivacy)
 routes.get('/:roomId/sync', roomsController.getSync)
 
 export default routes

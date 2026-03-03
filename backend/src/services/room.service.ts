@@ -171,6 +171,13 @@ export async function getActiveRooms(userId: string): Promise<any[]> {
   return activeRooms.filter(r => r !== null)
 }
 
+export async function updatePrivacy(roomId: string, userId: string, isPrivate: boolean): Promise<void> {
+  const { data: room } = await supabaseAdmin.from('rooms').select('host_id').eq('id', roomId).single()
+  if (!room || room.host_id !== userId) throw new Error('Unauthorized')
+
+  await supabaseAdmin.from('rooms').update({ is_private: isPrivate }).eq('id', roomId)
+}
+
 export async function addParticipant(roomId: string, userId: string, ws?: unknown): Promise<void> {
   await supabaseAdmin.from('room_participants').upsert({
     room_id: roomId,
@@ -345,6 +352,36 @@ export async function kickUser(roomId: string, hostId: string, targetUserId: str
 
   // Broadcast to others
   broadcastToRoom(roomId, { type: 'user_left', userId: targetUserId })
+}
+
+export async function inviteUser(roomId: string, hostId: string, targetUserId: string): Promise<void> {
+  const { data: room, error } = await supabaseAdmin
+    .from('rooms')
+    .select('code, name, host_id, media_id, media_title, profiles!rooms_host_id_fkey(name, avatar)')
+    .eq('id', roomId)
+    .single()
+
+  if (error || !room || room.host_id !== hostId) {
+    throw new Error('No tienes permiso para invitar')
+  }
+
+  const hostProfile = room.profiles as unknown as { name: string; avatar?: string }
+
+  const { error: notifError } = await supabaseAdmin.from('notifications').insert({
+    user_id: targetUserId,
+    type: 'invite',
+    data: {
+      roomCode: room.code,
+      title: `Invitación a sala`,
+      message: `${hostProfile.name} te ha invitado a ver ${room.media_title || 'un video'}`,
+      userAvatar: hostProfile.avatar,
+    },
+  })
+
+  if (notifError) {
+    logger.error('Failed to send invite notification:', notifError.message)
+    throw new Error('Error al enviar invitacion')
+  }
 }
 
 // Auto-cleanup worker for empty rooms older than 5 minutes

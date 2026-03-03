@@ -103,6 +103,32 @@ export async function getSync(c: Context) {
   return c.json(sync)
 }
 
+export async function inviteUser(c: Context<{ Variables: AppVariables }>) {
+  const roomId = c.req.param('roomId')
+  const targetUserId = c.req.param('userId')
+  const hostId = c.get('userId')
+
+  try {
+    await roomService.inviteUser(roomId, hostId, targetUserId)
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 403)
+  }
+}
+export async function updatePrivacy(c: Context<{ Variables: AppVariables }>) {
+  const roomId = c.req.param('roomId')
+  const userId = c.get('userId')
+  const body = await c.req.json()
+  const isPrivate = body.isPrivate
+
+  try {
+    await roomService.updatePrivacy(roomId, userId, isPrivate)
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 403)
+  }
+}
+
 // --- WebSocket handlers ---
 
 export async function handleUserJoined(roomId: string, userId: string, ws?: unknown): Promise<void> {

@@ -125,11 +125,8 @@ export async function getMediaList(
 
   const userId = await getJellyfinUserId()
 
-  // Cap per-request limit to avoid Render/Jellyfin timeouts on free tier
-  const jellyfinLimit = Math.min(limit, 50)
-
   // Fetch RecursiveItemCount to filter out empty series
-  const baseParams = `StartIndex=${skip}&Limit=${jellyfinLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
+  const baseParams = `StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
 
   const filterEmptySeries = (item: JellyfinItem) =>
     item.Type !== 'Series' || (item.RecursiveItemCount !== undefined && item.RecursiveItemCount > 0)
@@ -138,7 +135,7 @@ export async function getMediaList(
 
   // type=all: fetch movies + series in parallel
   if (type === 'all') {
-    const halfLimit = Math.ceil(jellyfinLimit / 2)
+    const halfLimit = Math.ceil(limit / 2)
     const [moviesData, seriesData] = await Promise.all([
       jellyfinFetch<{ Items: JellyfinItem[] }>(
         `/Users/${userId}/Items?IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
