@@ -39,7 +39,7 @@ async function jellyfinFetch<T>(path: string): Promise<T> {
   const separator = path.includes('?') ? '&' : '?'
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 15000)
+  const timeout = setTimeout(() => controller.abort(), 25000)
 
   try {
     logger.debug(`Jellyfin fetch: ${path}`)
@@ -96,17 +96,20 @@ export async function getMediaList(
 ): Promise<MediaItem[]> {
   const userId = await getJellyfinUserId()
 
+  // Cap per-request limit to avoid Jellyfin timeouts
+  const jellyfinLimit = Math.min(limit, 100)
+
   // Get movies and series separately to avoid issues
   if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${limit}`
+      `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${jellyfinLimit}`
     )
     return data.Items.map(mapJellyfinToMedia)
   }
 
   // For movies, use the Movies folder
   const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-    `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${limit}`
+    `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${jellyfinLimit}`
   )
 
   return data.Items.map(mapJellyfinToMedia)
