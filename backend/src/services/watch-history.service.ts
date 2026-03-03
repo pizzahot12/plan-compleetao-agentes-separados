@@ -69,8 +69,10 @@ export async function updateProgress(
   currentTime: number,
   duration: number
 ): Promise<void> {
+  const current = Math.round(currentTime)
+  const len = Math.round(duration)
   // Mark as completed if within last 5% of duration
-  const completed = duration > 0 && currentTime >= duration * 0.95
+  const completed = len > 0 && current >= len * 0.95
 
   const { error } = await supabaseAdmin
     .from('watch_history')
@@ -78,8 +80,8 @@ export async function updateProgress(
       {
         user_id: userId,
         media_id: mediaId,
-        current_time: currentTime,
-        duration,
+        current_time: current,
+        duration: len,
         completed,
         last_watched_at: new Date().toISOString(),
       },
