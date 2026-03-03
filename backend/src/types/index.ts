@@ -94,6 +94,7 @@ export interface RoomParticipant {
   name: string
   avatar?: string
   isWatching: boolean
+  isOnline: boolean
 }
 
 export interface RoomMessage {
