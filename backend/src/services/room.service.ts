@@ -8,6 +8,7 @@ interface RoomState {
   status: 'play' | 'pause'
   currentTime: number
   participants: Map<string, WebSocket>
+  hostId: string
 }
 
 const rooms = new Map<string, RoomState>()
@@ -51,6 +52,7 @@ export async function createRoom(
     status: 'pause',
     currentTime: 0,
     participants: new Map(),
+    hostId,
   })
 
   return { roomId: data.id, code }
@@ -176,7 +178,7 @@ export async function addParticipant(roomId: string, userId: string, ws?: unknow
   if (!rooms.has(roomId)) {
     const { data: room } = await supabaseAdmin
       .from('rooms')
-      .select('id')
+      .select('id, host_id')
       .eq('id', roomId)
       .single()
 
@@ -186,6 +188,7 @@ export async function addParticipant(roomId: string, userId: string, ws?: unknow
         status: 'pause',
         currentTime: 0,
         participants: new Map(),
+        hostId: room.host_id,
       })
     } else {
       logger.warn(`Room ${roomId} not found in DB, cannot add participant`)
@@ -198,6 +201,11 @@ export async function addParticipant(roomId: string, userId: string, ws?: unknow
   if (state && ws) {
     state.participants.set(userId, ws as WebSocket)
   }
+}
+
+export function getRoomHostId(roomId: string): string | null {
+  const state = rooms.get(roomId)
+  return state ? state.hostId : null
 }
 
 export async function removeParticipant(roomId: string, userId: string): Promise<void> {

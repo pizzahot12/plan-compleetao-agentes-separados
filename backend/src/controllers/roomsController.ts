@@ -122,8 +122,15 @@ export async function handleWebSocketMessage(
   userId: string,
   data: WSEvent
 ): Promise<void> {
+  const hostId = roomService.getRoomHostId(roomId)
+  const isHost = hostId === userId
+
   switch (data.type) {
     case 'play':
+      if (!isHost) {
+        logger.warn(`User ${userId} tried to play but is not host in room ${roomId}`)
+        return
+      }
       roomService.updateRoomSync(roomId, 'play', data.currentTime as number)
       roomService.broadcastToRoom(roomId, {
         type: 'play',
@@ -133,6 +140,7 @@ export async function handleWebSocketMessage(
       break
 
     case 'pause':
+      // Anyone can pause
       roomService.updateRoomSync(roomId, 'pause', data.currentTime as number)
       roomService.broadcastToRoom(roomId, {
         type: 'pause',
@@ -142,6 +150,10 @@ export async function handleWebSocketMessage(
       break
 
     case 'seek':
+      if (!isHost) {
+        logger.warn(`User ${userId} tried to seek but is not host in room ${roomId}`)
+        return
+      }
       roomService.updateRoomSync(
         roomId,
         roomService.getRoomSync(roomId).status,
