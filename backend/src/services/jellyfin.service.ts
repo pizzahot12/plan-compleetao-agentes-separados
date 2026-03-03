@@ -96,18 +96,20 @@ export async function getMediaList(
 ): Promise<MediaItem[]> {
   const userId = await getJellyfinUserId()
 
-  // Cap per-request limit to avoid Jellyfin timeouts
-  const jellyfinLimit = Math.min(limit, 100)
+  // Cap per-request limit to avoid Render/Jellyfin timeouts on free tier
+  const jellyfinLimit = Math.min(limit, 50)
 
-  // type=all: fetch movies + series in parallel with a small limit
+  const baseParams = `StartIndex=${skip}&Limit=${jellyfinLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
+
+  // type=all: fetch movies + series in parallel
   if (type === 'all') {
-    const halfLimit = Math.min(Math.ceil(jellyfinLimit / 2), 5)
+    const halfLimit = Math.ceil(jellyfinLimit / 2)
     const [moviesData, seriesData] = await Promise.all([
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&SortBy=CommunityRating&SortOrder=Descending`
+        `/Users/${userId}/Items?IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&SortBy=CommunityRating&SortOrder=Descending`
+        `/Users/${userId}/Items?IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
     ])
     return [...moviesData.Items.map(mapJellyfinToMedia), ...seriesData.Items.map(mapJellyfinToMedia)]
@@ -115,16 +117,15 @@ export async function getMediaList(
 
   if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?ParentId=5ddaa59a73205234890fdcfc683e14ed&IncludeItemTypes=Series&StartIndex=${skip}&Limit=${jellyfinLimit}`
+      `/Users/${userId}/Items?IncludeItemTypes=Series&${baseParams}`
     )
     return data.Items.map(mapJellyfinToMedia)
   }
 
-  // For movies, use the Movies folder
+  // movies
   const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-    `/Users/${userId}/Items?ParentId=ed2a25286c558a96e1424971742ca250&IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${jellyfinLimit}`
+    `/Users/${userId}/Items?IncludeItemTypes=Movie&${baseParams}`
   )
-
   return data.Items.map(mapJellyfinToMedia)
 }
 
