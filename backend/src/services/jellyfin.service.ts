@@ -334,3 +334,124 @@ export async function checkConnection(): Promise<JellyfinStatus> {
 export function isConfigured(): boolean {
   return !!JELLYFIN_URL && !!JELLYFIN_API_KEY
 }
+
+const BITRATE_MAP = [
+  { kbps: 20000, label: '1080p (20 Mbps)', maxW: 1920, maxH: 1080, id: 108020 },
+  { kbps: 12000, label: '1080p (12 Mbps)', maxW: 1920, maxH: 1080, id: 108012 },
+  { kbps: 8000, label: '720p  (8 Mbps)', maxW: 1280, maxH: 720, id: 72008 },
+  { kbps: 4000, label: '720p  (4 Mbps)', maxW: 1280, maxH: 720, id: 72004 },
+  { kbps: 2000, label: '480p  (2 Mbps)', maxW: 720, maxH: 480, id: 48002 },
+  { kbps: 720, label: '360p  (720 kbps)', maxW: 480, maxH: 320, id: 36000 },
+  { kbps: 320, label: '240p  (320 kbps)', maxW: 480, maxH: 240, id: 24000 },
+]
+
+export interface PlaybackInfoResult {
+  playSessionId: string
+  originalHeight: number
+  audioStreams: Array<{ Index: number; Language: string; Codec: string; DisplayTitle: string; IsDefault: boolean }>
+  subtitleStreams: Array<{ Index: number; Language: string; Codec: string; DisplayTitle: string; IsDefault: boolean }>
+  qualities: Array<{ src: string; type: string; size: number }>
+  qualityLabels: Record<number, string>
+}
+
+/**
+ * Fetches Jellyfin MediaSources for a given item and builds HLS
+ * transcoding URLs server-side so the api_key never reaches the browser.
+ */
+export async function getPlaybackInfo(
+  mediaId: string,
+  audioIndex?: number,
+  subtitleIndex?: number,
+): Promise<PlaybackInfoResult> {
+  const userId = await getJellyfinUserId()
+
+  // Stable session ID per invocation — prevents Jellyfin from killing the transcode on setting changes
+  const playSessionId = `pp_${mediaId.substring(0, 8)}_${Date.now()}`
+
+  // Get item metadata with MediaSources
+  const data = await jellyfinFetch<{ Items: Array<{ Id: string; MediaSources: Array<{ Id: string; MediaStreams: Array<{ Type: string; Index: number; Language?: string; Codec?: string; DisplayTitle?: string; IsDefault?: boolean; Height?: number }> }> }> }>(
+    `/Users/${userId}/Items/${mediaId}?Fields=MediaSources,MediaStreams`
+  )
+
+  const item = data.Items?.[0] ?? { Id: mediaId, MediaSources: [] }
+  const source = (item.MediaSources ?? [])[0] ?? { Id: mediaId, MediaStreams: [] }
+  const streams = source.MediaStreams ?? []
+
+  const audioStreams = streams
+    .filter(s => s.Type === 'Audio')
+    .map(s => ({
+      Index: s.Index,
+      Language: s.Language ?? '',
+      Codec: s.Codec ?? '',
+      DisplayTitle: s.DisplayTitle ?? '',
+      IsDefault: s.IsDefault ?? false,
+    }))
+
+  const subtitleStreams = streams
+    .filter(s => s.Type === 'Subtitle')
+    .map(s => ({
+      Index: s.Index,
+      Language: s.Language ?? '',
+      Codec: s.Codec ?? '',
+      DisplayTitle: s.DisplayTitle ?? '',
+      IsDefault: s.IsDefault ?? false,
+    }))
+
+  const videoStream = streams.find(s => s.Type === 'Video')
+  const originalHeight = videoStream?.Height ?? 1080
+
+  // Resolve audio/subtitle indices
+  const targetAudio = audioIndex ?? audioStreams.find(a => a.IsDefault)?.Index ?? audioStreams[0]?.Index
+  const targetSub = subtitleIndex ?? -1
+
+  const audioParam = targetAudio !== undefined
+    ? `&AudioStreamIndex=${targetAudio}&AudioCodec=aac&TranscodingMaxAudioChannels=2`
+    : ''
+  const subParam = targetSub >= 0
+    ? `&SubtitleStreamIndex=${targetSub}&SubtitleMethod=Encode`
+    : ''
+
+  const hlsBase = (
+    `${JELLYFIN_URL}/Videos/${item.Id}/master.m3u8` +
+    `?api_key=${JELLYFIN_API_KEY}` +
+    `&MediaSourceId=${source.Id}` +
+    `&DeviceId=plexparty` +
+    `&PlaySessionId=${playSessionId}` +
+    `&VideoCodec=h264` +
+    `&TranscodingMaxAudioChannels=2` +
+    `&SegmentContainer=fmp4` +
+    `&MinSegments=2` +
+    `&BreakOnNonKeyFrames=true` +
+    audioParam +
+    subParam
+  )
+
+  const qualityLabels: Record<number, string> = {
+    [originalHeight]: `Original (${originalHeight}p)`,
+  }
+
+  const qualities: Array<{ src: string; type: string; size: number }> = [
+    { src: hlsBase, type: 'application/x-mpegURL', size: originalHeight },
+  ]
+
+  BITRATE_MAP
+    .filter(opt => opt.maxH <= originalHeight)
+    .forEach(opt => {
+      qualityLabels[opt.id] = opt.label
+      qualities.push({
+        src: `${hlsBase}&VideoBitrate=${opt.kbps * 1000}&MaxWidth=${opt.maxW}&MaxHeight=${opt.maxH}`,
+        type: 'application/x-mpegURL',
+        size: opt.id,
+      })
+    })
+
+  return {
+    playSessionId,
+    originalHeight,
+    audioStreams,
+    subtitleStreams,
+    qualities,
+    qualityLabels,
+  }
+}
+
