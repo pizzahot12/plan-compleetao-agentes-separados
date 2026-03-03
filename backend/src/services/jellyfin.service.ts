@@ -404,15 +404,15 @@ export async function getPlaybackInfo(
   const targetAudio = audioIndex ?? audioStreams.find(a => a.IsDefault)?.Index ?? audioStreams[0]?.Index
   const targetSub = subtitleIndex ?? -1
 
-  // NOTE: We do NOT include AudioCodec here — Jellyfin adds it to segment URLs
-  // automatically and adding it at the master level causes it to be overwritten as "m3u8"
-  const audioStreamParam = targetAudio !== undefined
-    ? `&AudioStreamIndex=${targetAudio}`
+  const audioParam = targetAudio !== undefined
+    ? `&AudioStreamIndex=${targetAudio}&AudioCodec=aac&TranscodingMaxAudioChannels=2`
     : ''
   const subParam = targetSub >= 0
     ? `&SubtitleStreamIndex=${targetSub}&SubtitleMethod=Encode`
     : ''
 
+  // MUST match WatchParties parameters exactly to avoid 500 internal server errors in Jellyfin
+  // due to unhandled transcoding scenarios for non-standard formats (like TrueHD)
   const hlsBase = (
     `${JELLYFIN_URL}/Videos/${item.Id}/master.m3u8` +
     `?api_key=${JELLYFIN_API_KEY}` +
@@ -420,11 +420,13 @@ export async function getPlaybackInfo(
     `&DeviceId=plexparty` +
     `&PlaySessionId=${playSessionId}` +
     `&VideoCodec=h264` +
-    `&AudioCodec=aac` +
     `&TranscodingMaxAudioChannels=2` +
-    `&SegmentContainer=ts` +     // fmp4 causes 500 on many Jellyfin configs; ts is universal
-    `&MinSegments=1` +
-    audioStreamParam +
+    `&SegmentContainer=fmp4` +
+    `&MinSegments=2` +
+    `&BreakOnNonKeyFrames=true` +
+    `&ManifestTranscriptionEnabled=true` +
+    `&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported` +
+    audioParam +
     subParam
   )
 
