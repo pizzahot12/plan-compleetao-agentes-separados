@@ -357,7 +357,7 @@ export async function kickUser(roomId: string, hostId: string, targetUserId: str
 export async function inviteUser(roomId: string, hostId: string, targetUserId: string): Promise<void> {
   const { data: room, error } = await supabaseAdmin
     .from('rooms')
-    .select('code, name, host_id, media_id, media_title, profiles!rooms_host_id_fkey(name, avatar)')
+    .select('code, name, host_id, media_id, profiles!rooms_host_id_fkey(name, avatar)')
     .eq('id', roomId)
     .single()
 
@@ -367,13 +367,23 @@ export async function inviteUser(roomId: string, hostId: string, targetUserId: s
 
   const hostProfile = room.profiles as unknown as { name: string; avatar?: string }
 
+  let mediaTitle = room.name
+  try {
+    const details = await getMediaDetails(room.media_id)
+    if (details && details.title) {
+      mediaTitle = details.title
+    }
+  } catch (e) {
+    //
+  }
+
   const { error: notifError } = await supabaseAdmin.from('notifications').insert({
     user_id: targetUserId,
     type: 'invite',
     data: {
       roomCode: room.code,
       title: `Invitación a sala`,
-      message: `${hostProfile.name} te ha invitado a ver ${room.media_title || 'un video'}`,
+      message: `${hostProfile.name} te ha invitado a ver ${mediaTitle}`,
       userAvatar: hostProfile.avatar,
     },
   })
