@@ -60,7 +60,8 @@ async function jellyfinFetch<T>(path: string): Promise<T> {
   const separator = path.includes('?') ? '&' : '?'
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 25000)
+  // Aumentamos el timeout a 60 segundos porque Jellyfin puede demorar sacando la metadata pesada la primera vez
+  const timeout = setTimeout(() => controller.abort(), 60000)
 
   try {
     logger.debug(`Jellyfin fetch: ${path}`)
