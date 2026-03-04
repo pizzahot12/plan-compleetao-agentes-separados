@@ -334,25 +334,39 @@ export async function addMessage(
 
 export async function deleteRoom(roomId: string, userId: string): Promise<void> {
   // Verify host
-  const { data: room } = await supabaseAdmin
+  const { data: room, error: fetchErr } = await supabaseAdmin
     .from('rooms')
     .select('host_id')
     .eq('id', roomId)
     .single()
 
-  if (!room || room.host_id !== userId) {
+  if (fetchErr || !room) {
+    console.error('[deleteRoom] Room not found:', roomId, fetchErr?.message)
+    throw new Error('Sala no encontrada')
+  }
+
+  if (room.host_id !== userId) {
     throw new Error('Solo el host puede eliminar la sala')
   }
 
-  // Broadcast room closed
+  // Broadcast room closed (via old WS — harmless if nobody is connected)
   broadcastToRoom(roomId, { type: 'room_closed', reason: 'host_closed' })
 
-  // Clean up
-  await supabaseAdmin.from('room_participants').delete().eq('room_id', roomId)
-  await supabaseAdmin.from('room_messages').delete().eq('room_id', roomId)
-  await supabaseAdmin.from('rooms').delete().eq('id', roomId)
+  // Clean up in correct order (children first, then parent)
+  const { error: e1 } = await supabaseAdmin.from('room_messages').delete().eq('room_id', roomId)
+  if (e1) console.error('[deleteRoom] Error deleting messages:', e1.message)
+
+  const { error: e2 } = await supabaseAdmin.from('room_participants').delete().eq('room_id', roomId)
+  if (e2) console.error('[deleteRoom] Error deleting participants:', e2.message)
+
+  const { error: e3 } = await supabaseAdmin.from('rooms').delete().eq('id', roomId)
+  if (e3) {
+    console.error('[deleteRoom] Error deleting room:', e3.message)
+    throw new Error('Error al eliminar la sala de la base de datos')
+  }
 
   rooms.delete(roomId)
+  console.log('[deleteRoom] Room deleted successfully:', roomId)
 }
 
 export async function kickUser(roomId: string, hostId: string, targetUserId: string): Promise<void> {
