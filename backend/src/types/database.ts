@@ -12,6 +12,7 @@ export interface Database {
           email: string
           name: string
           avatar: string | null
+          is_approved: boolean
           created_at: string
           updated_at: string
         }
@@ -20,6 +21,7 @@ export interface Database {
           email: string
           name: string
           avatar?: string | null
+          is_approved?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -28,6 +30,7 @@ export interface Database {
           email?: string
           name?: string
           avatar?: string | null
+          is_approved?: boolean
           updated_at?: string
         }
         Relationships: []

@@ -53,7 +53,7 @@ export async function loginWithProviderToken(accessToken: string): Promise<AuthR
     // Primero entrar, crear profile esperando ser aprobado
     const { data: newProfile } = await supabaseAdmin.from('profiles').insert({
       id: user.id,
-      email: user.email,
+      email: user.email!,
       name: user.user_metadata?.full_name || user.email!.split('@')[0],
       avatar: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
       is_approved: false
