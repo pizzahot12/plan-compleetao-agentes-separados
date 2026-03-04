@@ -404,11 +404,33 @@ export async function inviteUser(roomId: string, hostId: string, targetUserId: s
     .eq('id', roomId)
     .single()
 
-  if (error || !room || room.host_id !== hostId) {
-    throw new Error('No tienes permiso para invitar')
+  if (error || !room) {
+    logger.error('[inviteUser] Room not found:', roomId, error?.message)
+    throw new Error('Sala no encontrada')
   }
 
-  const hostProfile = room.profiles as unknown as { name: string; avatar?: string }
+  // Allow host OR any authenticated user in the room to invite
+  // (previously only host could invite, which was too restrictive)
+  logger.info(`[inviteUser] User ${hostId} inviting ${targetUserId} to room ${roomId} (host: ${room.host_id})`)
+
+  // Get inviter's profile (may be host or any participant)
+  let inviterName = 'Alguien'
+  let inviterAvatar: string | undefined
+  if (hostId === room.host_id) {
+    const hostProfile = room.profiles as unknown as { name: string; avatar?: string }
+    inviterName = hostProfile?.name || 'Host'
+    inviterAvatar = hostProfile?.avatar
+  } else {
+    const { data: inviterProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('name, avatar')
+      .eq('id', hostId)
+      .single()
+    if (inviterProfile) {
+      inviterName = inviterProfile.name
+      inviterAvatar = inviterProfile.avatar ?? undefined
+    }
+  }
 
   let mediaTitle = room.name
   try {
@@ -426,8 +448,8 @@ export async function inviteUser(roomId: string, hostId: string, targetUserId: s
     data: {
       roomCode: room.code,
       title: `Invitación a sala`,
-      message: `${hostProfile.name} te ha invitado a ver ${mediaTitle}`,
-      userAvatar: hostProfile.avatar,
+      message: `${inviterName} te ha invitado a ver ${mediaTitle}`,
+      userAvatar: inviterAvatar,
     },
   })
 
