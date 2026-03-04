@@ -114,7 +114,9 @@ export async function inviteUser(c: Context<{ Variables: AppVariables }>) {
     await roomService.inviteUser(roomId, hostId, targetUserId)
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ error: (err as Error).message }, 403)
+    const errorMsg = (err as Error).message
+    const status = errorMsg.includes('No tienes permiso') ? 403 : 500
+    return c.json({ error: errorMsg }, status as any)
   }
 }
 export async function updatePrivacy(c: Context<{ Variables: AppVariables }>) {
