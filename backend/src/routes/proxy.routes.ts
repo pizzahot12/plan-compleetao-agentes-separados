@@ -51,6 +51,10 @@ proxyRoutes.all('/*', async (c) => {
     responseHeaders.delete('access-control-allow-origin')
     responseHeaders.delete('access-control-allow-methods')
 
+    // Remove compression headers because node-fetch decompresses automatically, which would cause the browser to fail decoding
+    responseHeaders.delete('content-encoding')
+    responseHeaders.delete('content-length')
+
     return new Response(response.body as any, {
       status: response.status,
       headers: responseHeaders

@@ -14,6 +14,12 @@ const authMiddleware = createMiddleware<{ Variables: AppVariables }>(async (c, n
   }
 
   if (!token) {
+    // Bypass auth for nested HLS streams since Native Safari/iOS cannot append Authorization headers or tokens to nested m3u8 requests automatically
+    const path = c.req.path
+    if (path.startsWith('/api/proxy/jellyfin/Videos/') &&
+      (path.endsWith('.m3u8') || path.endsWith('.ts') || path.includes('/hls/') || path.includes('/stream'))) {
+      return next()
+    }
     return c.json({ error: 'Token no proporcionado' }, 401)
   }
 
