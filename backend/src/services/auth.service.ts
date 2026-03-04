@@ -50,15 +50,23 @@ export async function loginWithProviderToken(accessToken: string): Promise<AuthR
     .single()
 
   if (!profile) {
+    const isOwner = user.email === 'poloniaahumberto@gmail.com';
+
     // Primero entrar, crear profile esperando ser aprobado
     const { data: newProfile } = await supabaseAdmin.from('profiles').insert({
       id: user.id,
       email: user.email!,
       name: user.user_metadata?.full_name || user.email!.split('@')[0],
       avatar: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-      is_approved: false
+      is_approved: isOwner
     }).select().single()
     profile = newProfile
+  }
+
+  // Auto-aprobar si es el dueño y estaba pendiente
+  if (profile && !profile.is_approved && user.email === 'poloniaahumberto@gmail.com') {
+    await supabaseAdmin.from('profiles').update({ is_approved: true }).eq('id', user.id);
+    profile.is_approved = true;
   }
 
   if (!profile?.is_approved) {
