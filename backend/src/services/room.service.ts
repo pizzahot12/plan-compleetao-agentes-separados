@@ -285,7 +285,7 @@ export async function addMessage(
   userId: string,
   text: string
 ): Promise<RoomMessage> {
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileErr } = await supabaseAdmin
     .from('profiles')
     .select('name')
     .eq('id', userId)
