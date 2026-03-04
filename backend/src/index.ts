@@ -12,6 +12,7 @@ import roomsRoutes from './routes/rooms.routes.js'
 import friendsRoutes from './routes/friends.routes.js'
 import notificationsRoutes from './routes/notifications.routes.js'
 import watchHistoryRoutes from './routes/watch-history.routes.js'
+import proxyRoutes from './routes/proxy.routes.js'
 import { roomsController } from './routes/rooms.routes.js'
 import { cleanupEmptyRooms } from './services/room.service.js'
 import type { AppVariables, WSEvent } from './types/index.js'
@@ -46,6 +47,7 @@ app.use('/api/rooms/*', authMiddleware)
 app.use('/api/friends/*', authMiddleware)
 app.use('/api/notifications/*', authMiddleware)
 app.use('/api/history/*', authMiddleware)
+app.use('/api/proxy/*', authMiddleware)
 
 app.route('/api/media', mediaRoutes)
 app.route('/api/stream', streamRoutes)
@@ -53,6 +55,7 @@ app.route('/api/rooms', roomsRoutes)
 app.route('/api/friends', friendsRoutes)
 app.route('/api/notifications', notificationsRoutes)
 app.route('/api/history', watchHistoryRoutes)
+app.route('/api/proxy/jellyfin', proxyRoutes)
 
 // WebSocket endpoint for rooms
 app.get(
