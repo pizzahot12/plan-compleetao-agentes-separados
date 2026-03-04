@@ -53,13 +53,19 @@ export async function loginWithProviderToken(accessToken: string): Promise<AuthR
     const isOwner = user.email === 'poloniaahumberto@gmail.com';
 
     // Primero entrar, crear profile esperando ser aprobado
-    const { data: newProfile } = await supabaseAdmin.from('profiles').insert({
+    const { data: newProfile, error: insertError } = await supabaseAdmin.from('profiles').insert({
       id: user.id,
       email: user.email!,
       name: user.user_metadata?.full_name || user.email!.split('@')[0],
       avatar: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
       is_approved: isOwner
     }).select().single()
+
+    if (insertError) {
+      logger.error(`Error insertando el perfil: ${insertError.message}`)
+      console.error(insertError)
+    }
+
     profile = newProfile
   }
 
