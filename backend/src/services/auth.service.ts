@@ -34,6 +34,50 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return { token, user }
 }
 
+export async function loginWithProviderToken(accessToken: string): Promise<AuthResponse> {
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+
+  if (error || !user) {
+    logger.warn(`Google login failed (invalid Supabase token): ${error?.message}`)
+    throw new Error('Token de sesion invalido')
+  }
+
+  // Get or Create profile
+  let { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) {
+    // Primero entrar, crear profile esperando ser aprobado
+    const { data: newProfile } = await supabaseAdmin.from('profiles').insert({
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name || user.email!.split('@')[0],
+      avatar: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+      is_approved: false
+    }).select().single()
+    profile = newProfile
+  }
+
+  if (!profile?.is_approved) {
+    throw new Error('PENDING_APPROVAL')
+  }
+
+  const userPayload = {
+    id: user.id,
+    email: user.email!,
+    name: profile?.name || user.email!.split('@')[0],
+    avatar: profile?.avatar || undefined,
+    created_at: user.created_at,
+  }
+
+  const token = signToken({ userId: userPayload.id, email: userPayload.email })
+
+  return { token, user: userPayload }
+}
+
 export async function register(
   email: string,
   password: string,

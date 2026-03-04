@@ -5,6 +5,10 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password minimo 6 caracteres'),
 })
 
+export const googleLoginSchema = z.object({
+  access_token: z.string().min(1, 'access_token es requerido'),
+})
+
 export const registerSchema = z.object({
   email: z.string().email('Email invalido'),
   password: z.string().min(6, 'Password minimo 6 caracteres'),
