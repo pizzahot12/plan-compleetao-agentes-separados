@@ -21,6 +21,15 @@ export async function login(email: string, password: string): Promise<AuthRespon
     .eq('id', data.user.id)
     .single()
 
+  if (profile && !profile.is_approved && data.user.email === 'poloniaahumberto@gmail.com') {
+    await supabaseAdmin.from('profiles').update({ is_approved: true }).eq('id', data.user.id);
+    profile.is_approved = true;
+  }
+
+  if (!profile?.is_approved) {
+    throw new Error('PENDING_APPROVAL')
+  }
+
   const user = {
     id: data.user.id,
     email: data.user.email!,
@@ -113,7 +122,13 @@ export async function register(
     id: data.user.id,
     name,
     email,
+    is_approved: email === 'poloniaahumberto@gmail.com',
   })
+
+  const isOwner = email === 'poloniaahumberto@gmail.com';
+  if (!isOwner) {
+    throw new Error('PENDING_APPROVAL');
+  }
 
   const user = {
     id: data.user.id,

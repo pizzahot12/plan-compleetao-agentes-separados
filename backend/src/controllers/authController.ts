@@ -14,6 +14,9 @@ export async function login(c: Context) {
     const result = await authService.login(parsed.data.email, parsed.data.password)
     return c.json(result)
   } catch (err) {
+    if ((err as Error).message === 'PENDING_APPROVAL') {
+      return c.json({ error: 'Tu cuenta esta en lista de espera y debe ser aprobada por el administrador.' }, 403)
+    }
     return c.json({ error: (err as Error).message }, 401)
   }
 }
@@ -53,6 +56,9 @@ export async function register(c: Context) {
     )
     return c.json(result, 201)
   } catch (err) {
+    if ((err as Error).message === 'PENDING_APPROVAL') {
+      return c.json({ error: 'Tu cuenta esta en lista de espera y debe ser aprobada por el administrador.' }, 403)
+    }
     return c.json({ error: (err as Error).message }, 400)
   }
 }
