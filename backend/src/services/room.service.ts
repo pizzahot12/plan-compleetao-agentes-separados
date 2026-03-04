@@ -291,6 +291,19 @@ export async function addMessage(
     .eq('id', userId)
     .single()
 
+  if (profileErr || !profile) {
+    try {
+      await supabaseAdmin.from('profiles').upsert({
+        id: userId,
+        name: 'Guest ' + userId.substring(0, 4),
+        email: `${userId}@guest.local`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+      });
+    } catch {
+      // Ignorar error de creación de perfil invitado
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('room_messages')
     .insert({
