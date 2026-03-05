@@ -358,6 +358,11 @@ export function getImageUrl(
   return `${JELLYFIN_URL}/Items/${itemId}/Images/${imageType}?${params}`
 }
 
+export function getSubtitleUrl(mediaId: string, index: number, sourceId: string = mediaId): string | null {
+  if (!JELLYFIN_URL || !JELLYFIN_API_KEY) return null
+  return `${JELLYFIN_URL}/Videos/${mediaId}/${sourceId}/Subtitles/${index}/Stream.vtt?api_key=${JELLYFIN_API_KEY}`
+}
+
 export interface JellyfinStatus {
   connected: boolean
   serverName?: string
@@ -465,10 +470,9 @@ export async function getPlaybackInfo(
   const targetAudio = audioIndex ?? audioStreams.find(a => a.IsDefault)?.Index ?? audioStreams[0]?.Index
   const targetSub = subtitleIndex ?? -1
 
-  const activeSub = targetSub > -1 ? targetSub : -1;
-  const subParam = activeSub > -1
-    ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode`
-    : '';
+  // We DO NOT embed subtitles into HLS anymore. The frontend will fetch them
+  // natively via the /api/media/:id/subtitle/:index endpoint and render them using <track>
+  const subParam = ''
 
   // To prevent the "m3u8" override bug, we define AudioStreamIndex natively if it exists,
   // but ALWAYS enforce AudioCodec=aac so Jellyfin doesn't derive "m3u8" from the playlist extension.

@@ -140,8 +140,33 @@ export async function getJellyfinStatus(c: Context) {
   } catch (err) {
     return c.json({
       connected: false,
-      configured: jellyfinService.isConfigured(),
       error: (err as Error).message,
     })
+  }
+}
+
+export async function getSubtitle(c: Context) {
+  const mediaId = c.req.param('id')
+  const index = c.req.param('index')
+
+  if (!mediaId || !index) return c.json({ error: 'Faltan parámetros' }, 400)
+
+  try {
+    const url = jellyfinService.getSubtitleUrl(mediaId, parseInt(index, 10))
+    if (!url) return c.json({ error: 'Servidor no configurado' }, 500)
+
+    const response = await fetch(url)
+    if (!response.ok) return c.json({ error: 'No se encontró el subtítulo' }, 404)
+
+    // We proxy the content as text/vtt
+    const content = await response.text()
+
+    // Adding standard VTT header in case it doesn't have it (optional, but good measure)
+    c.header('Content-Type', 'text/vtt; charset=utf-8')
+    c.header('Access-Control-Allow-Origin', '*') // Allow browsers to fetch track with crossorigin="anonymous"
+    return c.body(content)
+  } catch (err) {
+    logger.error('getSubtitle error:', (err as Error).message)
+    return c.json({ error: 'Error interno obteniendo subtitulo' }, 500)
   }
 }
