@@ -159,14 +159,49 @@ export async function getSubtitle(c: Context) {
     if (!response.ok) return c.json({ error: 'No se encontró el subtítulo' }, 404)
 
     // We proxy the content as text/vtt
-    const content = await response.text()
+    let content = await response.text()
 
-    // Adding standard VTT header in case it doesn't have it (optional, but good measure)
+    // Adding standard VTT header in case it doesn't have it (browsers reject it otherwise)
+    if (!content.trim().startsWith('WEBVTT')) {
+      content = 'WEBVTT\n\n' + content
+    }
+
     c.header('Content-Type', 'text/vtt; charset=utf-8')
     c.header('Access-Control-Allow-Origin', '*') // Allow browsers to fetch track with crossorigin="anonymous"
     return c.body(content)
   } catch (err) {
     logger.error('getSubtitle error:', (err as Error).message)
     return c.json({ error: 'Error interno obteniendo subtitulo' }, 500)
+  }
+}
+
+export async function searchSubtitles(c: Context) {
+  const mediaId = c.req.param('id')
+  const language = c.req.query('language') || 'spa' // Default to spanish as per product spec
+
+  try {
+    const results = await jellyfinService.searchRemoteSubtitles(mediaId, language)
+    return c.json(results)
+  } catch (err) {
+    logger.error('searchSubtitles error:', (err as Error).message)
+    return c.json({ error: 'Error al buscar subtítulos online' }, 500)
+  }
+}
+
+export async function downloadSubtitle(c: Context) {
+  const mediaId = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
+  const subtitleId = body?.subtitleId
+
+  if (!subtitleId) {
+    return c.json({ error: 'subtitleId es requerido' }, 400)
+  }
+
+  try {
+    await jellyfinService.downloadRemoteSubtitle(mediaId, subtitleId)
+    return c.json({ success: true })
+  } catch (err) {
+    logger.error('downloadSubtitle error:', (err as Error).message)
+    return c.json({ error: 'Error al descargar subtítulo' }, 500)
   }
 }

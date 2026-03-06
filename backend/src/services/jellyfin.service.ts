@@ -133,30 +133,33 @@ export async function getMediaList(
 
   let result: MediaItem[]
 
+  const moviesFolderId = 'ed2a25286c558a96e1424971742ca250';
+  const seriesFolderId = '5ddaa59a73205234890fdcfc683e14ed';
+
   // type=all: fetch movies + series in parallel
   if (type === 'all') {
     const halfLimit = Math.ceil(limit / 2)
     const [moviesData, seriesData] = await Promise.all([
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?IncludeItemTypes=Movie&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres&Recursive=true`
+        `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?IncludeItemTypes=Series&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&Recursive=true`
+        `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
     ])
     result = [
       ...moviesData.Items.map(mapJellyfinToMedia),
-      ...seriesData.Items.filter((i) => (i.RecursiveItemCount ?? 0) > 0).map(mapJellyfinToMedia)
+      ...seriesData.Items.map(mapJellyfinToMedia)
     ]
   } else if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?IncludeItemTypes=Series&${baseParams}`
+      `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
     )
-    result = data.Items.filter(filterEmptySeries).map(mapJellyfinToMedia)
+    result = data.Items.map(mapJellyfinToMedia)
   } else {
     // movies
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?IncludeItemTypes=Movie&${baseParams}`
+      `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
     )
     result = data.Items.map(mapJellyfinToMedia)
   }
@@ -526,3 +529,33 @@ export async function getPlaybackInfo(
   }
 }
 
+export interface RemoteSubtitleInfo {
+  Id: string;
+  Name: string;
+  ProviderName: string;
+  Format: string;
+  ThreeLetterISOLanguageName: string;
+  IsHashMatch: boolean;
+  Comment: string;
+  Language: string;
+}
+
+export async function searchRemoteSubtitles(mediaId: string, language: string = 'spa'): Promise<RemoteSubtitleInfo[]> {
+  const data = await jellyfinFetch<RemoteSubtitleInfo[]>(
+    `/Items/${mediaId}/RemoteSearch/Subtitles/${language}`
+  )
+  return data
+}
+
+export async function downloadRemoteSubtitle(mediaId: string, subtitleId: string): Promise<void> {
+  if (!JELLYFIN_URL || !JELLYFIN_API_KEY) {
+    throw new Error('Jellyfin not configured')
+  }
+  const url = `${JELLYFIN_URL}/Items/${mediaId}/RemoteSearch/Subtitles/${subtitleId}?api_key=${JELLYFIN_API_KEY}`
+  const response = await fetch(url, { method: 'POST' })
+  if (!response.ok) {
+    const text = await response.text()
+    logger.error(`Error downloading subtitle ${subtitleId}: ${text}`)
+    throw new Error(`Failed to download subtitle: ${response.status}`)
+  }
+}

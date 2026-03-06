@@ -200,6 +200,14 @@ export async function handleWebSocketMessage(
       await roomService.addMessage(roomId, userId, data.text as string)
       break
 
+    case 'reaction':
+      roomService.broadcastToRoom(roomId, {
+        type: 'reaction',
+        emoji: data.emoji as string,
+        userId,
+      })
+      break
+
     default:
       logger.warn(`Unknown WS event type: ${data.type}`)
   }

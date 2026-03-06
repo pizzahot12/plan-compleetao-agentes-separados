@@ -12,6 +12,8 @@ routes.get('/:id/episodes', mediaController.getEpisodes)
 routes.get('/:id/streams', mediaController.getMediaStreams)
 routes.get('/:id/playback-info', playbackController.getPlaybackInfo)
 routes.get('/:id/subtitle/:index', mediaController.getSubtitle)
+routes.get('/:id/subtitles/search', mediaController.searchSubtitles)
+routes.post('/:id/subtitles/download', mediaController.downloadSubtitle)
 routes.get('/:id', mediaController.getMediaDetails)
 
 export default routes

@@ -151,6 +151,7 @@ export type WSEventType =
   | 'chat_message'
   | 'quality_changed'
   | 'connection_established'
+  | 'reaction'
 
 export interface WSEvent {
   type: WSEventType
