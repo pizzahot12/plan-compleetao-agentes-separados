@@ -459,7 +459,9 @@ export async function inviteUser(roomId: string, hostId: string, targetUserId: s
   }
 }
 
-// Auto-cleanup worker for empty rooms older than 5 minutes
+// Auto-cleanup worker: only delete rooms with no participants that are older than 2 hours.
+// 2-hour threshold gives enough time for Render.com cold starts, mobile reconnects,
+// and page refreshes without losing the room due to a brief WS disconnect.
 export async function cleanupEmptyRooms(): Promise<void> {
   try {
     const { data: activeRooms, error } = await supabaseAdmin
@@ -469,14 +471,14 @@ export async function cleanupEmptyRooms(): Promise<void> {
     if (error || !activeRooms) return
 
     const now = new Date()
-    const fiveMinutes = 5 * 60 * 1000
+    const twoHours = 2 * 60 * 60 * 1000
 
     for (const room of activeRooms) {
       const parts = room.room_participants as unknown as any[]
       const count = parts ? parts.length : 0
       const createdAt = new Date(room.created_at)
 
-      if (count === 0 && (now.getTime() - createdAt.getTime()) > fiveMinutes) {
+      if (count === 0 && (now.getTime() - createdAt.getTime()) > twoHours) {
         logger.info(`Cleaning up abandoned empty room: ${room.id}`)
         await supabaseAdmin.from('room_messages').delete().eq('room_id', room.id)
         await supabaseAdmin.from('rooms').delete().eq('id', room.id)

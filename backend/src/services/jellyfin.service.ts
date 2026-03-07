@@ -39,19 +39,29 @@ if (!JELLYFIN_URL || !JELLYFIN_API_KEY) {
 async function getJellyfinUserId(): Promise<string> {
   if (jellyfinUserId) return jellyfinUserId
 
-  const response = await fetch(
-    `${JELLYFIN_URL}/Users?api_key=${JELLYFIN_API_KEY}`
-  )
-  if (!response.ok) throw new Error('Failed to get Jellyfin users')
+  // Retry up to 3 times — Jellyfin may be slow on cold start
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(
+        `${JELLYFIN_URL}/Users?api_key=${JELLYFIN_API_KEY}`
+      )
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-  const users = await response.json() as Array<{ Id: string; Policy: { IsAdministrator: boolean } }>
-  const admin = users.find((u) => u.Policy.IsAdministrator)
-  jellyfinUserId = admin ? admin.Id : users[0].Id
-  logger.info(`Jellyfin userId resolved: ${jellyfinUserId}`)
-  return jellyfinUserId
+      const users = await response.json() as Array<{ Id: string; Policy: { IsAdministrator: boolean } }>
+      const admin = users.find((u) => u.Policy?.IsAdministrator)
+      jellyfinUserId = admin ? admin.Id : users[0]?.Id
+      if (!jellyfinUserId) throw new Error('No users returned')
+      logger.info(`Jellyfin userId resolved: ${jellyfinUserId}`)
+      return jellyfinUserId
+    } catch (err) {
+      logger.warn(`getJellyfinUserId attempt ${attempt}/3 failed: ${(err as Error).message}`)
+      if (attempt < 3) await new Promise(r => setTimeout(r, 2000 * attempt))
+    }
+  }
+  throw new Error('Failed to get Jellyfin userId after 3 attempts')
 }
 
-async function jellyfinFetch<T>(path: string): Promise<T> {
+async function jellyfinFetch<T>(path: string, retries = 2): Promise<T> {
   if (!JELLYFIN_URL || !JELLYFIN_API_KEY) {
     throw new Error('Jellyfin not configured')
   }
@@ -59,30 +69,37 @@ async function jellyfinFetch<T>(path: string): Promise<T> {
   const url = `${JELLYFIN_URL}${path}`
   const separator = path.includes('?') ? '&' : '?'
 
-  const controller = new AbortController()
-  // Aumentamos el timeout a 60 segundos porque Jellyfin puede demorar sacando la metadata pesada la primera vez
-  const timeout = setTimeout(() => controller.abort(), 60000)
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60000)
 
-  try {
-    logger.debug(`Jellyfin fetch: ${path}`)
-    const response = await fetch(`${url}${separator}api_key=${JELLYFIN_API_KEY}`, {
-      signal: controller.signal,
-    })
+    try {
+      logger.debug(`Jellyfin fetch (attempt ${attempt}): ${path}`)
+      const response = await fetch(`${url}${separator}api_key=${JELLYFIN_API_KEY}`, {
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      logger.error(`Jellyfin API error: ${response.status} ${response.statusText} for ${path} - ${errorText}`)
-      throw new Error(`Jellyfin API error: ${response.status}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`Jellyfin API error: ${response.status} ${response.statusText} for ${path} - ${errorText}`)
+        throw new Error(`Jellyfin API error: ${response.status}`)
+      }
+
+      return response.json() as Promise<T>
+    } catch (err) {
+      const error = err as Error
+      if (attempt <= retries) {
+        logger.warn(`Jellyfin fetch failed (attempt ${attempt}/${retries + 1}), retrying: ${error.message}`)
+        await new Promise(r => setTimeout(r, 1500 * attempt))
+      } else {
+        logger.error(`Jellyfin fetch failed for ${path}: ${error.message}`)
+        throw err
+      }
+    } finally {
+      clearTimeout(timeout)
     }
-
-    return response.json() as Promise<T>
-  } catch (err) {
-    const error = err as Error
-    logger.error(`Jellyfin fetch failed for ${path}: ${error.message}`)
-    throw err
-  } finally {
-    clearTimeout(timeout)
   }
+  throw new Error('Unreachable')
 }
 
 function ticksToSeconds(ticks: number): number {
