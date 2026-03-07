@@ -30,28 +30,33 @@ proxyRoutes.all('/*', async (c) => {
     const range = c.req.header('range')
     if (range) headers.set('range', range)
 
-    // Copy safe headers from client request
     const safeHeaders = ['accept', 'user-agent']
     for (const h of safeHeaders) {
       const val = c.req.header(h)
       if (val) headers.set(h, val)
     }
 
+    const isVideoSegment = targetPath.includes('.ts') || targetPath.includes('.m3u8')
+    const controller = new AbortController()
+    const timeoutMs = isVideoSegment ? 180_000 : 30_000
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+
     const response = await fetch(targetUrl, {
       method: c.req.method,
       headers,
+      signal: controller.signal,
     })
+
+    clearTimeout(timer)
 
     const responseHeaders = new Headers()
     response.headers.forEach((val, key) => {
       responseHeaders.set(key, val)
     })
 
-    // Remove strict CORS from Jellyfin if present so our backend can manage it natively via the global cors handler
     responseHeaders.delete('access-control-allow-origin')
     responseHeaders.delete('access-control-allow-methods')
 
-    // Remove compression headers because node-fetch decompresses automatically, which would cause the browser to fail decoding
     responseHeaders.delete('content-encoding')
     responseHeaders.delete('content-length')
 
