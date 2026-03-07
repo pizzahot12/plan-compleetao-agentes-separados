@@ -142,9 +142,8 @@ export async function getMediaList(
 
   const userId = await getJellyfinUserId()
 
-  // Filter out empty series and ghost items (deleted folders with no posters)
+  // Filter out empty series only — movies are always shown even without artwork
   const filterValidMedia = (item: JellyfinItem) => {
-    if (!item.ImageTags || !item.ImageTags['Primary']) return false;
     if (item.Type === 'Series') {
       return item.RecursiveItemCount !== undefined && item.RecursiveItemCount > 0;
     }
