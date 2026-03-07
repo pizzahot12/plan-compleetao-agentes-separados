@@ -125,43 +125,49 @@ export async function getMediaList(
 
   const userId = await getJellyfinUserId()
 
-  // Fetch RecursiveItemCount to filter out empty series
-  const baseParams = `StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount&SortBy=ProductionYear&SortOrder=Descending&Recursive=true`
-
-  const filterEmptySeries = (item: JellyfinItem) =>
-    item.Type !== 'Series' || (item.RecursiveItemCount !== undefined && item.RecursiveItemCount > 0)
+  // Filter out empty series and ghost items (deleted folders with no posters)
+  const filterValidMedia = (item: JellyfinItem) => {
+    if (!item.ImageTags || !item.ImageTags['Primary']) return false;
+    if (item.Type === 'Series') {
+      return item.RecursiveItemCount !== undefined && item.RecursiveItemCount > 0;
+    }
+    return true;
+  }
 
   let result: MediaItem[]
 
   const moviesFolderId = 'ed2a25286c558a96e1424971742ca250';
   const seriesFolderId = '5ddaa59a73205234890fdcfc683e14ed';
 
+  // Include RecursiveItemCount in fields so we can filter series accurately
+  const fields = 'PrimaryImageAspectRatio,Overview,Genres,RecursiveItemCount';
+
   // type=all: fetch movies + series in parallel
   if (type === 'all') {
     const halfLimit = Math.ceil(limit / 2)
     const [moviesData, seriesData] = await Promise.all([
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
+        `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=${fields}`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
       jellyfinFetch<{ Items: JellyfinItem[] }>(
-        `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
+        `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${halfLimit}&Fields=${fields}`
       ).catch(() => ({ Items: [] as JellyfinItem[] })),
     ])
     result = [
-      ...moviesData.Items.map(mapJellyfinToMedia),
-      ...seriesData.Items.map(mapJellyfinToMedia)
+      ...moviesData.Items.filter(filterValidMedia).map(mapJellyfinToMedia),
+      ...seriesData.Items.filter(filterValidMedia).map(mapJellyfinToMedia)
     ]
   } else if (type === 'series') {
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
+      `/Users/${userId}/Items?ParentId=${seriesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=${fields}`
     )
-    result = data.Items.map(mapJellyfinToMedia)
+    result = data.Items.filter(filterValidMedia).map(mapJellyfinToMedia)
   } else {
     // movies
     const data = await jellyfinFetch<{ Items: JellyfinItem[] }>(
-      `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=PrimaryImageAspectRatio,Overview,Genres`
+      `/Users/${userId}/Items?ParentId=${moviesFolderId}&StartIndex=${skip}&Limit=${limit}&Fields=${fields}`
     )
-    result = data.Items.map(mapJellyfinToMedia)
+    result = data.Items.filter(filterValidMedia).map(mapJellyfinToMedia)
   }
 
   cacheSet(cacheKey, result, TTL_LIST)
